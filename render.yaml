@@ -1,0 +1,22 @@
+# Render blueprint for the BeeAble API (free tier). In Render: New > Blueprint > pick this repo.
+# Free tier: sleeps after ~15 min idle (first request then takes ~1 min) and the disk is wiped on
+# restart/redeploy, so reports and photos don't persist until Supabase lands.
+services:
+  - type: web
+    name: beeable-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # --proxy-headers so /uploads returns https:// photo URLs behind Render's proxy
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: INTAKE_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false # set in the Render dashboard, never in git
+      - key: CORS_ORIGINS
+        value: https://localhost,http://localhost:5173
