@@ -4,7 +4,8 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { MOCK_FALLBACK_EVENT } from "./api";
 import { USE_MOCKS } from "./config";
 import { Insights } from "./pages/Insights";
-import { ResidentApp } from "./pages/ResidentApp";
+import { NavigatePage } from "./pages/NavigatePage";
+import { ReportPage } from "./pages/ReportPage";
 import { isNative } from "./platform";
 
 export function App() {
@@ -27,19 +28,15 @@ export function App() {
   }, []);
 
   return (
-    <>
+    <div className="app">
       <a href="#main" className="skip-link">
         Skip to content
       </a>
       <header className="topbar">
-        <span className="brand">BeeAble</span>
-        <nav aria-label="Main">
-          <NavLink to="/" end>
-            Navigate
-          </NavLink>
-          {/* The Android app is the resident app; staff use /insights on the web. */}
-          {!isNative && <NavLink to="/insights">Insights (staff)</NavLink>}
-        </nav>
+        <span className="brand">
+          <span className="brand-mark" aria-hidden="true">⬢</span> BeeAble
+        </span>
+        <TabNav className="tabs-top" />
       </header>
       {offline && (
         <p className="offline-banner" role="status">
@@ -49,10 +46,35 @@ export function App() {
       )}
       <main id="main">
         <Routes>
-          <Route path="/" element={<ResidentApp />} />
+          <Route path="/" element={<NavigatePage />} />
+          <Route path="/report" element={<ReportPage />} />
           <Route path="/insights" element={<Insights />} />
         </Routes>
       </main>
-    </>
+      <TabNav className="tabs-bottom" />
+    </div>
+  );
+}
+
+/** Same links twice: in the header on wide screens, as a bottom tab bar on phones (CSS decides). */
+function TabNav({ className }: { className: string }) {
+  return (
+    <nav aria-label="Main" className={className}>
+      <NavLink to="/" end>
+        <span className="tab-icon" aria-hidden="true">🗺</span>
+        <span>Navigate</span>
+      </NavLink>
+      <NavLink to="/report">
+        <span className="tab-icon" aria-hidden="true">📷</span>
+        <span>Report</span>
+      </NavLink>
+      {/* The Android app is the resident app; staff use /insights on the web. */}
+      {!isNative && (
+        <NavLink to="/insights">
+          <span className="tab-icon" aria-hidden="true">📋</span>
+          <span>Staff</span>
+        </NavLink>
+      )}
+    </nav>
   );
 }

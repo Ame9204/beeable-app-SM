@@ -1,5 +1,6 @@
-import { CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-import { divIcon, type PathOptions } from "leaflet";
+import { useEffect } from "react";
+import { AttributionControl, CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { divIcon, latLngBounds, type PathOptions } from "leaflet";
 import type { Feature, LineString } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_ZOOM, PRECINCT_CENTER } from "../config";
@@ -30,6 +31,26 @@ function barrierSegments(route: RouteResponse) {
   return [...seen.entries()];
 }
 
+/** Zoom to the route, leaving room for the bottom sheet on phones. */
+function FitRoute({ route, routeKey }: { route: RouteResponse | null; routeKey: string }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!route) return;
+    const pts = [...route.shortest.features, ...route.recommended.features].flatMap((f) =>
+      f.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
+    );
+    if (!pts.length) return;
+    const phone = window.innerWidth < 900;
+    map.fitBounds(latLngBounds(pts), {
+      paddingTopLeft: phone ? [24, 24] : [440, 24],
+      paddingBottomRight: phone ? [24, Math.round(window.innerHeight * 0.55)] : [24, 24],
+      maxZoom: 18,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey]);
+  return null;
+}
+
 const STATUS_COLOR: Record<string, string> = {
   unverified: "#b45309",
   verified: "#b91c1c",
@@ -52,7 +73,10 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
       zoom={DEFAULT_ZOOM}
       className="map"
       aria-label="Map of the campus showing routes and reported barriers"
+      attributionControl={false}
     >
+      <AttributionControl position="topright" prefix={false} />
+      <FitRoute route={route} routeKey={routeKey} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

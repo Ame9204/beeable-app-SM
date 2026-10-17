@@ -9,6 +9,8 @@ export const PRECINCT_CENTER: [number, number] = [5.714050829302482, 100.4503961
 export const DEFAULT_ZOOM = 17;
 // GPS positions further than this from the centre are treated as off campus.
 export const CAMPUS_RADIUS_M = 1500;
+// Conservative walking/wheeling speed for time estimates (same as backend/config.py).
+export const WALK_SPEED_MPS = 1.0;
 
 export const PROFILES = [
   { id: "step_free", label: "Step-free", hint: "Avoids steps and steep slopes" },
