@@ -9,7 +9,7 @@ import { useRoute } from "../hooks/useRoute";
 import { SPEECH_LANGS, useSpeechInput } from "../hooks/useSpeechInput";
 import { pickPhoto } from "../nativeCamera";
 import { isNative } from "../platform";
-import type { Profile, Report } from "../types";
+import type { Profile, Report, RouteResponse } from "../types";
 
 type Locator = ReturnType<typeof useLocation>;
 
@@ -68,10 +68,7 @@ export function ResidentApp() {
           {route && !loading && (
             <>
               {/* Never call a route "accessible" — see CLAUDE.md */}
-              <p className="summary">
-                No known barriers for your profile on the BeeAble route.{" "}
-                {Math.round(route.surveyed_share * 100)}% of it has been surveyed.
-              </p>
+              <RouteSummary route={route} />
               <details open>
                 <summary>Why this route?</summary>
                 <ul>
@@ -97,6 +94,28 @@ export function ResidentApp() {
       />
     </div>
   );
+}
+
+function RouteSummary({ route }: { route: RouteResponse }) {
+  const rec = route.costs.recommended;
+  const surveyed = `${Math.round(route.surveyed_share * 100)}% of it has been surveyed.`;
+  if (rec.least_bad) {
+    return (
+      <p className="summary warning" role="alert">
+        ⚠ No route avoids every barrier for your profile. This is the least-bad option; it passes{" "}
+        {rec.blocked_by}. {surveyed}
+      </p>
+    );
+  }
+  if ((rec.known_barriers ?? 0) > 0) {
+    return (
+      <p className="summary warning">
+        ⚠ This is the best route we found for your profile, but it still has known barriers (see below).{" "}
+        {surveyed}
+      </p>
+    );
+  }
+  return <p className="summary">No known barriers for your profile on the BeeAble route. {surveyed}</p>;
 }
 
 function ReportForm({ onCreated, location }: { onCreated: () => void; location: Locator }) {

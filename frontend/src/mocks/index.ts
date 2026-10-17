@@ -52,12 +52,12 @@ const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString
 
 let reports: Report[] = [
   {
-    id: "r-001", reference_number: "BEE-001", lat: 5.7099, lng: 100.4467, photo_url: null,
-    original_text: "Tangga tiada ramp depan Unit Kesihatan", language: "ms", status: "verified", edge_id: null,
+    id: "r-001", reference_number: "BEE-001", lat: 5.7119793, lng: 100.4484015, photo_url: null,
+    original_text: "Tangga tiada ramp di laluan ke Unit Kesihatan", language: "ms", status: "verified", edge_id: null,
     source: "simulated", ai_source: "simulated", created_at: daysAgo(2), verified_at: daysAgo(1), resolved_at: null,
     ai: {
       is_accessibility_barrier: true, category: "steps_no_ramp", severity: "high",
-      affects: ["wheelchair", "stroller", "elderly"], summary_en: "Three steps at the Unit Kesihatan entrance with no ramp.",
+      affects: ["wheelchair", "stroller", "elderly"], summary_en: "Steps with no ramp on the main path to Unit Kesihatan.",
       language_detected: "ms", possible_duplicate_of: null, privacy_flag: false, confidence: "high",
       reason: "Steps clearly visible; no ramp in frame.",
     },

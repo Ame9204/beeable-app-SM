@@ -11,8 +11,23 @@ export interface SegmentProps {
   edge_id: string;
   source: DataSource;
   surveyed: boolean;
+  length_m?: number;
+  name?: string;
+  /** Known problems on this segment, e.g. "steps with no ramp (verified)". */
   barrier?: string;
   barrier_verified?: boolean;
+  /** True when this segment is impassable for the requested profile. */
+  impassable?: boolean;
+}
+
+export interface PathCost {
+  length_m: number;
+  cost: number | null;
+  blocked_by?: string;
+  known_barriers?: number;
+  unknown_m?: number;
+  /** No route avoids every hard barrier; this is the least-bad one. */
+  least_bad?: boolean;
 }
 
 export type RouteGeoJSON = FeatureCollection<LineString, SegmentProps>;
@@ -20,7 +35,7 @@ export type RouteGeoJSON = FeatureCollection<LineString, SegmentProps>;
 export interface RouteResponse {
   shortest: RouteGeoJSON;
   recommended: RouteGeoJSON;
-  costs: Record<string, { length_m: number; cost: number | null; blocked_by?: string }>;
+  costs: { profile?: Profile; shortest: PathCost; recommended: PathCost };
   explanation: string[];
   surveyed_share: number;
 }

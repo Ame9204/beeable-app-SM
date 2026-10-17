@@ -1,4 +1,4 @@
-"""BeeAble API. Endpoints follow the agreed contract in CLAUDE.md. /route and priority inputs are still mocked."""
+"""BeeAble API. Endpoints follow the agreed contract in CLAUDE.md."""
 
 import re
 import uuid
@@ -18,7 +18,10 @@ from config import (
 )
 from intake.images import process_image
 from intake.service import nearest_open, run_intake
+from priority.inputs import poi_proximity
 from priority.score import priority_score
+from routing.router import CampusGraph, OffNetworkError
+from routing.weights import ReportEffect
 from schemas import AISuggestion, Priority, Report, ReportCreate, ReportPatch, RouteResponse, ScoreBreakdown
 
 app = FastAPI(title="BeeAble API", version="0.1.0")
@@ -35,6 +38,12 @@ app.mount("/photos", StaticFiles(directory=UPLOAD_DIR), name="photos")
 # In-memory, saved to a JSON file on every write, until Supabase is wired up.
 # DECISIONS logs each staff decision next to the AI suggestion (agreement-rate metric).
 REPORTS, DECISIONS = store.load(STORE_PATH, mock_data.seed_reports())
+
+# Campus walk graph (built offline by `python -m routing.build_graph`). Reports are snapped to edges.
+CAMPUS = CampusGraph.load()
+for _rid, _r in REPORTS.items():
+    if _r.edge_id is None:
+        REPORTS[_rid] = _r.model_copy(update={"edge_id": CAMPUS.nearest_edge(_r.lat, _r.lng)[0]})
 
 PHOTO_NAME = re.compile(r"^[0-9a-f]{32}\.jpg$")
 
@@ -77,7 +86,22 @@ def get_route(
     to: str = Query(..., description="lat,lng"),
     profile: Profile = "step_free",
 ) -> dict:
-    return mock_data.mock_route(_parse_latlng(from_, "from"), _parse_latlng(to, "to"), profile)
+    try:
+        return CAMPUS.route(_parse_latlng(from_, "from"), _parse_latlng(to, "to"), profile, _report_effects())
+    except OffNetworkError as exc:
+        raise HTTPException(422, str(exc))
+
+
+def _report_effects() -> dict[str, tuple[ReportEffect, ...]]:
+    """Open reports per edge. Unverified = soft penalty; verified/in progress = full effect;
+    rejected/resolved = none, so resolving a report changes the next route."""
+    effects: dict[str, list[ReportEffect]] = {}
+    for r in REPORTS.values():
+        if r.edge_id and r.status in ("unverified", "verified", "in_progress") and r.ai.is_accessibility_barrier:
+            effects.setdefault(r.edge_id, []).append(
+                ReportEffect(r.id, r.ai.category, verified=r.status != "unverified")
+            )
+    return {k: tuple(v) for k, v in effects.items()}
 
 
 @app.post("/uploads")
@@ -115,6 +139,7 @@ def create_report(body: ReportCreate) -> Report:
         ai=ai,
         ai_source=ai_source,
         status="unverified",  # AI output never verifies
+        edge_id=CAMPUS.nearest_edge(body.lat, body.lng)[0],
         created_at=datetime.now(timezone.utc),
     )
     REPORTS[rid] = report
@@ -157,18 +182,19 @@ def update_report(report_id: str, body: ReportPatch) -> Report:
 
 @app.get("/priorities", response_model=list[Priority])
 def list_priorities() -> list[Priority]:
+    open_reports = [r for r in REPORTS.values() if r.status not in ("rejected", "resolved")]
     scored: list[tuple[float, Report, ScoreBreakdown]] = []
-    for r in REPORTS.values():
+    for r in open_reports:
         if r.status not in ("verified", "in_progress"):
             continue
-        crit, poi, count = mock_data.MOCK_PRIORITY_INPUTS.get(r.id, (0.0, 0, 1))
         breakdown = ScoreBreakdown(
             severity=SEVERITY_SCORE[r.ai.severity],
-            route_criticality=crit,
-            poi_proximity=poi,
-            report_count=count,
+            route_criticality=CAMPUS.criticality.get(r.edge_id or "", 0.0),
+            poi_proximity=poi_proximity(r.lat, r.lng),
+            report_count=max(1, sum(1 for o in open_reports if o.edge_id and o.edge_id == r.edge_id)),
         )
-        scored.append((priority_score(r.ai.severity, crit, poi, count), r, breakdown))
+        b = breakdown
+        scored.append((priority_score(r.ai.severity, b.route_criticality, b.poi_proximity, b.report_count), r, b))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [
         Priority(rank=i, report=r, score=round(s, 2), breakdown=b)

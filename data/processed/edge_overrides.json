@@ -1,0 +1,19 @@
+{
+  "_readme": "Per-edge accessibility attributes layered on top of campus_walk.json (OSM). Keys are edge ids from that file ('<node>-<node>'). Fields: has_steps (bool), steps_verified (bool), slope_pct (number), shade (bool), source ('surveyed' | 'simulated'). Edges not listed keep OSM data: source 'imported', attributes unknown. Replace 'simulated' entries with 'surveyed' ones after the walk survey. Report-based barriers (e.g. the demo steps, seed report r-001) live in reports, not here, so resolving a report changes the route.",
+  "edges": {
+    "3782986702-7118827987": {
+      "has_steps": false,
+      "slope_pct": 3,
+      "shade": false,
+      "source": "simulated",
+      "note": "Demo detour around the steps on the path to Unit Kesihatan (part 1)"
+    },
+    "3782986676-7118827987": {
+      "has_steps": false,
+      "slope_pct": 2,
+      "shade": false,
+      "source": "simulated",
+      "note": "Demo detour around the steps on the path to Unit Kesihatan (part 2)"
+    }
+  }
+}

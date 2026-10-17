@@ -27,3 +27,6 @@ Thumbs.db
 
 # build cache
 *.tsbuildinfo
+
+# OSMnx download cache (routing.build_graph)
+backend/cache/

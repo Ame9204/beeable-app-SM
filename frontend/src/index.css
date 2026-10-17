@@ -157,3 +157,13 @@ td button { margin: 0; white-space: nowrap; }
   color: #78350f;
   border-bottom: 2px solid #b45309;
 }
+.summary.warning { color: #78350f; }
+.barrier-icon {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: #fef3c7;
+  border: 2px solid #b45309;
+  border-radius: 50%;
+}
+.legend-icon { width: 28px; height: 28px; flex: none; }

@@ -78,3 +78,23 @@ def test_reports_persist_to_store():
     rid = client.post("/reports", json={"text": "saved?", "lat": 5.71, "lng": 100.45}).json()["id"]
     saved = json.loads(STORE_PATH.read_text(encoding="utf-8"))
     assert rid in {r["id"] for r in saved["reports"]}
+
+
+def test_resolve_changes_route_end_to_end():
+    params = {"from": "5.714050829302482,100.45039616486677", "to": "5.709855420465538,100.44663876053161",
+              "profile": "step_free"}
+    client.patch("/reports/r-001", json={"status": "verified"})
+    before = client.get("/route", params=params).json()["costs"]["recommended"]["length_m"]
+    client.patch("/reports/r-001", json={"status": "resolved"})
+    after = client.get("/route", params=params).json()["costs"]["recommended"]["length_m"]
+    assert after < before
+
+
+def test_reports_get_an_edge_id():
+    r = client.post("/reports", json={"text": "x", "lat": 5.7119, "lng": 100.4484}).json()
+    assert r["edge_id"]
+
+
+def test_route_off_campus_is_422():
+    r = client.get("/route", params={"from": "5.80,100.50", "to": "5.7099,100.4466"})
+    assert r.status_code == 422

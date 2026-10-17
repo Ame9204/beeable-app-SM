@@ -1,0 +1,3 @@
+# Offline tools (not installed on Render): rebuild the campus graph with `python -m routing.build_graph`
+-r requirements.txt
+osmnx>=2.0

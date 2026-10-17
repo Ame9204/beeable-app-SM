@@ -19,6 +19,12 @@ export function RouteLegend() {
         </svg>
         Shortest route
       </li>
+      <li>
+        <span className="barrier-icon legend-icon" aria-hidden="true">
+          ⚠
+        </span>
+        Known barrier on a route (tap for details)
+      </li>
     </ul>
   );
 }

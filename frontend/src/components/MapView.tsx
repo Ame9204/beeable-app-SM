@@ -1,5 +1,5 @@
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer } from "react-leaflet";
-import type { PathOptions } from "leaflet";
+import { CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { divIcon, type PathOptions } from "leaflet";
 import type { Feature, LineString } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_ZOOM, PRECINCT_CENTER } from "../config";
@@ -13,6 +13,21 @@ function recommendedStyle(feature?: Feature<LineString, SegmentProps>): PathOpti
   const unknown = !feature?.properties.surveyed;
   // Unknown segments render dashed — never treat unknown as safe.
   return { color: RECOMMENDED_COLOR, weight: 7, opacity: 0.9, dashArray: unknown ? "10 10" : undefined };
+}
+
+// Barriers on either route get a ⚠ marker with text, not just a colour.
+const BARRIER_ICON = divIcon({ className: "barrier-icon", html: "⚠", iconSize: [28, 28] });
+
+function barrierSegments(route: RouteResponse) {
+  const seen = new Map<string, { at: [number, number]; text: string; impassable: boolean }>();
+  for (const f of [...route.shortest.features, ...route.recommended.features]) {
+    const p = f.properties;
+    if (!p.barrier || seen.has(p.edge_id)) continue;
+    const c = f.geometry.coordinates;
+    const [lng, lat] = c[Math.floor(c.length / 2)];
+    seen.set(p.edge_id, { at: [lat, lng], text: p.barrier, impassable: Boolean(p.impassable) });
+  }
+  return [...seen.entries()];
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -46,6 +61,21 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
         <>
           <GeoJSON key={`s-${routeKey}`} data={route.shortest} style={SHORTEST_STYLE} />
           <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} />
+          {barrierSegments(route).map(([id, b]) => (
+            <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={`Barrier: ${b.text}`}>
+              <Popup>
+                <strong>Barrier</strong>
+                <br />
+                {b.text}
+                {b.impassable && (
+                  <>
+                    <br />
+                    Impassable for your profile
+                  </>
+                )}
+              </Popup>
+            </Marker>
+          ))}
         </>
       )}
       {origin && (

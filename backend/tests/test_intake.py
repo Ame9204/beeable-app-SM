@@ -112,5 +112,5 @@ def test_process_image_strips_exif_and_resizes():
 
 def test_nearest_open_skips_closed_and_sorts():
     reports = seed_reports()
-    near = nearest_open(reports.values(), 5.7099, 100.4467, k=2)
+    near = nearest_open(reports.values(), 5.7119, 100.4484, k=2)
     assert near[0]["id"] == "r-001" and len(near) == 2
