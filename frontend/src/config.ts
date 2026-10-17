@@ -7,8 +7,9 @@ export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 // Pilot site centre: UiTM Kedah campus, Merbok. Keep in sync with backend/config.py.
 export const PRECINCT_CENTER: [number, number] = [5.714050829302482, 100.45039616486677];
 export const DEFAULT_ZOOM = 17;
-// GPS positions further than this from the centre are treated as off campus.
-export const CAMPUS_RADIUS_M = 1500;
+// GPS positions further than this from the centre are treated as off campus (route starts at the centre).
+// Matches the walk graph's coverage (GRAPH_RADIUS_M in backend/config.py); further out, /route can't snap.
+export const CAMPUS_RADIUS_M = 700;
 // Conservative walking/wheeling speed for time estimates (same as backend/config.py).
 export const WALK_SPEED_MPS = 1.0;
 

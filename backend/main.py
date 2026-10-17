@@ -77,7 +77,8 @@ def _parse_latlng(value: str, name: str) -> tuple[float, float]:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True}
+    # graph info makes it easy to tell which backend version a deployment is running
+    return {"ok": True, "routing": "campus_graph", "graph_edges": len(CAMPUS.edges), "built_at": CAMPUS.meta["built_at"]}
 
 
 @app.get("/route", response_model=RouteResponse)

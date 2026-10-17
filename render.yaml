@@ -6,10 +6,10 @@ services:
     name: beeable-api
     runtime: python
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    # No rootDir: the API reads data/processed/ (campus graph, overrides), which is outside backend/.
+    buildCommand: pip install -r backend/requirements.txt
     # --proxy-headers so /uploads returns https:// photo URLs behind Render's proxy
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
