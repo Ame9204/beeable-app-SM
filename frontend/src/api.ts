@@ -1,7 +1,7 @@
 // API client. Falls back to in-browser mocks when the backend is unreachable or USE_MOCKS is set.
 import { API_URL, USE_MOCKS } from "./config";
 import * as mocks from "./mocks";
-import type { Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse } from "./types";
+import type { AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse } from "./types";
 
 /** Fired when a request falls back to in-browser sample data, so the UI can say so. */
 export const MOCK_FALLBACK_EVENT = "beeable:mock-fallback";
@@ -48,6 +48,12 @@ export const api = {
       photo_url: null,
     }));
   },
+
+  /** AI reads the uploaded photo (and any text) before sending. A suggestion only. */
+  analyse: (body: AnalyseRequest) =>
+    request<Analysis>("/reports/analyse", { method: "POST", body: JSON.stringify(body) }, () =>
+      mocks.mockAnalyse(body),
+    ),
 
   createReport: (body: ReportCreate) =>
     request<Report>("/reports", { method: "POST", body: JSON.stringify(body) }, () =>

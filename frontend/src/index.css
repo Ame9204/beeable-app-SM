@@ -638,3 +638,10 @@ legend { font-weight: 700; padding: 0; margin-bottom: 0.5rem; }
   background: transparent; color: var(--ink); text-decoration: none; font-weight: 700;
 }
 .menu-item:hover { background: var(--honey-wash); }
+
+/* Report: "Analyse with AI" */
+.analyse { margin-top: 0.75rem; }
+.ai-preview { margin: 0; padding: 0.85rem 1rem; border: 2px solid var(--honey); border-radius: var(--radius-sm); background: var(--honey-wash); }
+.ai-preview p { margin: 0.25rem 0; }
+.ai-label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+.step-hint { margin: -0.35rem 0 0.75rem; }

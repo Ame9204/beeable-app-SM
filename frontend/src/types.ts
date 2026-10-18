@@ -76,6 +76,7 @@ export interface ReportCreate {
   text: string;
   lat: number;
   lng: number;
+  analysis_id?: string | null;
 }
 
 export interface Priority {
@@ -88,4 +89,18 @@ export interface Priority {
     poi_proximity: number;
     report_count: number;
   };
+}
+
+/** POST /reports/analyse: AI suggestion shown before the resident sends. */
+export interface Analysis {
+  analysis_id: string;
+  ai: AISuggestion;
+  ai_source: AISource;
+}
+
+export interface AnalyseRequest {
+  photo_url: string;
+  text: string;
+  lat: number;
+  lng: number;
 }

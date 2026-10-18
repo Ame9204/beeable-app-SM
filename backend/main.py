@@ -23,7 +23,9 @@ from priority.inputs import poi_proximity
 from priority.score import priority_score
 from routing.router import CampusGraph, OffNetworkError
 from routing.weights import ReportEffect
-from schemas import AISuggestion, Priority, Report, ReportCreate, ReportPatch, RouteResponse, ScoreBreakdown
+from schemas import (
+    AISource, AISuggestion, AnalyseRequest, Analysis, Priority, Report, ReportCreate, ReportPatch, RouteResponse, ScoreBreakdown,
+)
 
 app = FastAPI(title="BeeAble API", version="0.1.0")
 app.add_middleware(
@@ -45,6 +47,11 @@ CAMPUS = CampusGraph.load()
 for _rid, _r in REPORTS.items():
     if _r.edge_id is None:
         REPORTS[_rid] = _r.model_copy(update={"edge_id": CAMPUS.nearest_edge(_r.lat, _r.lng)[0]})
+
+# Analyses from POST /reports/analyse, kept briefly so sending the report reuses the answer
+# (one model call per report). In memory only; a restart just means the report is analysed again.
+ANALYSES: dict[str, dict] = {}
+MAX_ANALYSES = 200
 
 PHOTO_NAME = re.compile(r"^[0-9a-f]{32}\.jpg$")
 
@@ -133,9 +140,39 @@ async def upload_photo(file: UploadFile, request: Request) -> dict:
     return {"photo_url": str(request.url_for("photos", path=name))}
 
 
+@app.post("/reports/analyse", response_model=Analysis)
+def analyse_photo(body: AnalyseRequest) -> Analysis:
+    """Run the AI on an uploaded photo before the resident sends the report, so they don't have to type."""
+    image = _local_photo(body.photo_url)
+    if image is None:
+        raise HTTPException(422, "upload the photo with /uploads first")
+    ai, ai_source = run_intake(
+        image=image,
+        text=body.text,
+        lat=body.lat,
+        lng=body.lng,
+        nearby=nearest_open(REPORTS.values(), body.lat, body.lng),
+    )
+    analysis_id = f"a-{uuid.uuid4().hex[:12]}"
+    if len(ANALYSES) >= MAX_ANALYSES:
+        ANALYSES.pop(next(iter(ANALYSES)))  # drop the oldest
+    ANALYSES[analysis_id] = {"photo_url": body.photo_url, "text": body.text.strip(), "ai": ai, "ai_source": ai_source}
+    return Analysis(analysis_id=analysis_id, ai=ai, ai_source=ai_source)
+
+
+def _reusable_analysis(body: ReportCreate) -> tuple[AISuggestion, AISource] | None:
+    """The earlier analysis, if it was for this same photo and text and didn't fall back."""
+    a = ANALYSES.pop(body.analysis_id, None) if body.analysis_id else None
+    if a and a["photo_url"] == body.photo_url and a["text"] == body.text.strip() and a["ai_source"] != "fallback":
+        return a["ai"], a["ai_source"]
+    return None
+
+
 @app.post("/reports", response_model=Report, status_code=201)
 def create_report(body: ReportCreate) -> Report:
-    ai, ai_source = run_intake(
+    if not body.photo_url and not body.text.strip():
+        raise HTTPException(422, "add a photo or a short description")
+    ai, ai_source = _reusable_analysis(body) or run_intake(
         image=_local_photo(body.photo_url),
         text=body.text,
         lat=body.lat,

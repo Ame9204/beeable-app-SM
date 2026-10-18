@@ -1,6 +1,8 @@
 // In-browser mocks matching the API contract. Used when VITE_USE_MOCKS=true or the API is down.
 // Keep in step with backend/mock_data.py.
-import type { Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse, SegmentProps } from "../types";
+import type {
+  AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse, SegmentProps,
+} from "../types";
 
 type LatLng = [number, number];
 
@@ -85,7 +87,22 @@ export function mockListReports(status?: ReportStatus): Report[] {
   return reports.filter((r) => !status || r.status === status);
 }
 
-export function mockCreateReport(body: ReportCreate): Report {
+// Simulated: the real AI can't run without the API.
+export function mockAnalyse(_body: AnalyseRequest): Analysis {
+  return {
+    analysis_id: `a-mock-${Math.random().toString(16).slice(2, 10)}`,
+    ai_source: "simulated",
+    ai: {
+      is_accessibility_barrier: true, category: "damaged_kerb", severity: "medium",
+      affects: ["wheelchair", "stroller"],
+      summary_en: "Broken kerb edge at the crossing makes it hard to get onto the pavement.",
+      language_detected: "en", possible_duplicate_of: null, privacy_flag: false, confidence: "medium",
+      reason: "Sample answer: the BeeAble server is offline.",
+    },
+  };
+}
+
+export function mockCreateReport({ analysis_id: _analysis, ...body }: ReportCreate): Report {
   const id = `r-${Math.random().toString(16).slice(2, 10)}`;
   const report: Report = {
     id, reference_number: `BEE-${id.slice(2).toUpperCase()}`, ...body,

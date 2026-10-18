@@ -105,3 +105,57 @@ def test_health_reports_intake_status_without_the_key():
     intake = client.get("/health").json()["intake"]
     assert intake["key_set"] in (True, False)
     assert "not set" in intake["last_error"]["reason"]
+
+
+def _upload_red_photo() -> str:
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 600), "red").save(buf, format="JPEG")
+    return client.post("/uploads", files={"file": ("kerb.jpg", buf.getvalue(), "image/jpeg")}).json()["photo_url"]
+
+
+def test_report_needs_photo_or_text():
+    r = client.post("/reports", json={"text": "  ", "lat": 5.71, "lng": 100.45})
+    assert r.status_code == 422
+
+
+def test_analyse_needs_an_uploaded_photo():
+    r = client.post("/reports/analyse", json={"photo_url": "https://example.com/x.jpg", "lat": 5.71, "lng": 100.45})
+    assert r.status_code == 422
+
+
+def test_analyse_then_send_reuses_the_answer(monkeypatch):
+    import main
+    from intake.service import fallback_suggestion
+
+    calls = []
+
+    def fake_intake(**kwargs):
+        calls.append(kwargs)
+        return fallback_suggestion("").model_copy(update={"category": "damaged_kerb", "confidence": "high"}), "live"
+
+    monkeypatch.setattr(main, "run_intake", fake_intake)
+    url = _upload_red_photo()
+    a = client.post("/reports/analyse", json={"photo_url": url, "lat": 5.7141, "lng": 100.4504}).json()
+    assert a["ai"]["category"] == "damaged_kerb" and a["ai_source"] == "live"
+
+    # photo only, no text: allowed, and the model is not called a second time
+    r = client.post("/reports", json={"photo_url": url, "lat": 5.7141, "lng": 100.4504, "analysis_id": a["analysis_id"]})
+    assert r.status_code == 201
+    assert r.json()["ai"]["category"] == "damaged_kerb" and r.json()["status"] == "unverified"
+    assert len(calls) == 1
+
+
+def test_analysis_not_reused_when_text_changes(monkeypatch):
+    import main
+    from intake.service import fallback_suggestion
+
+    calls = []
+    monkeypatch.setattr(main, "run_intake", lambda **kw: (calls.append(kw), (fallback_suggestion(""), "live"))[1])
+    url = _upload_red_photo()
+    a = client.post("/reports/analyse", json={"photo_url": url, "lat": 5.71, "lng": 100.45}).json()
+    client.post("/reports", json={"photo_url": url, "text": "Tangga", "lat": 5.71, "lng": 100.45, "analysis_id": a["analysis_id"]})
+    assert len(calls) == 2 and calls[1]["text"] == "Tangga"

@@ -19,9 +19,26 @@ class RouteResponse(BaseModel):
 
 class ReportCreate(BaseModel):
     photo_url: str | None = None
+    text: str = ""  # optional when there is a photo
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    # From POST /reports/analyse: reuse that AI answer instead of calling the model again.
+    analysis_id: str | None = None
+
+
+class AnalyseRequest(BaseModel):
+    photo_url: str
     text: str = ""
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
+
+
+class Analysis(BaseModel):
+    """AI suggestion shown to the resident before they send. Still only a suggestion."""
+
+    analysis_id: str
+    ai: AISuggestion
+    ai_source: AISource
 
 
 class Report(BaseModel):

@@ -7,7 +7,7 @@ import { useAccount } from "../hooks/useAccount";
 import { speechLangFor } from "../account";
 import { pickPhoto } from "../nativeCamera";
 import { isNative } from "../platform";
-import type { Report } from "../types";
+import type { Analysis, Report } from "../types";
 import { Icon } from "../components/Icon";
 
 // Tap-to-add starters for the description. They only add text; the AI (then staff) decide the category.
@@ -36,19 +36,60 @@ export function ReportPage() {
 
 function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
   const [text, setText] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photo, setPhotoState] = useState<File | null>(null);
+  // Uploaded copy of `photo`, so analysing and sending don't upload twice.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analysedText, setAnalysedText] = useState("");
+  const [analysing, setAnalysing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
+  const hasText = text.trim().length > 0;
+  // Text added after analysing means the AI should read it too, so the server re-analyses on send.
+  const analysisStale = analysis !== null && text.trim() !== analysedText;
+
+  function setPhoto(f: File | null) {
+    setPhotoState(f);
+    setPhotoUrl(null);
+    setAnalysis(null);
+  }
+
+  async function ensureUploaded(): Promise<string | null> {
+    if (!photo) return null;
+    if (photoUrl) return photoUrl;
+    const { photo_url } = await api.uploadPhoto(photo);
+    setPhotoUrl(photo_url);
+    return photo_url;
+  }
+
+  async function analyse() {
+    setAnalysing(true);
+    setError(null);
+    try {
+      const [[lat, lng], url] = await Promise.all([location.locate(), ensureUploaded()]);
+      const result = await api.analyse({ photo_url: url ?? "", text, lat, lng });
+      setAnalysis(result);
+      setAnalysedText(text.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setAnalysing(false);
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!photo && !hasText) {
+      setError("Add a photo or a short description first.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const [lat, lng] = await location.locate(); // fresh fix for the report itself
-      const { photo_url } = photo ? await api.uploadPhoto(photo) : { photo_url: null };
-      onCreated(await api.createReport({ photo_url, text, lat, lng }));
+      // fresh location fix for the report itself
+      const [[lat, lng], photo_url] = await Promise.all([location.locate(), ensureUploaded()]);
+      onCreated(await api.createReport({ photo_url, text, lat, lng, analysis_id: analysis?.analysis_id ?? null }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -60,12 +101,12 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
     <form onSubmit={submit} aria-labelledby="report-heading" className="report">
       <header className="page-header">
         <h1 id="report-heading">Report a barrier</h1>
-        <p>Spotted steps, a broken kerb or something blocking the path? Tell us and staff will check it.</p>
+        <p>Snap a photo of the steps, broken kerb or blocked path. Our AI describes it for you, and staff check it.</p>
       </header>
 
       <ol className="stepper" aria-label="Progress">
-        <StepDot n={1} label="Photo" done={photo !== null} optional />
-        <StepDot n={2} label="Describe" done={text.trim().length > 0} />
+        <StepDot n={1} label="Photo" done={photo !== null} />
+        <StepDot n={2} label="Details" done={analysis !== null || hasText} optional={photo !== null} />
         <StepDot n={3} label="Send" done={false} />
       </ol>
 
@@ -74,14 +115,45 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
           <span className="step-num" aria-hidden="true">1</span> Photo
         </h2>
         <PhotoPicker photo={photo} onPhoto={setPhoto} />
+        {photo && (
+          <div className="analyse" aria-live="polite">
+            {analysis ? (
+              <AnalysisCard analysis={analysis} stale={analysisStale} />
+            ) : (
+              <button type="button" className="primary big" onClick={analyse} disabled={analysing}>
+                {analysing ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" /> Looking at your photo…
+                  </>
+                ) : (
+                  <>
+                    <Icon name="sparkle" /> Analyse with AI
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="card step" aria-labelledby="step-describe">
         <h2 id="step-describe">
-          <span className="step-num" aria-hidden="true">2</span> What's the problem?
+          <span className="step-num" aria-hidden="true">2</span>{" "}
+          {photo ? (
+            <>
+              Add details <span className="optional">(optional)</span>
+            </>
+          ) : (
+            "What's the problem?"
+          )}
         </h2>
+        {photo && (
+          <p className="hint step-hint">
+            {analysis ? "Anything the AI missed? Add it here." : "Not needed with a photo, but it can help."}
+          </p>
+        )}
         <QuickPicks text={text} setText={setText} />
-        <Describe text={text} setText={setText} />
+        <Describe text={text} setText={setText} required={!photo} />
       </section>
 
       <section className="card step" aria-labelledby="step-location">
@@ -111,10 +183,11 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
             Could not send the report: {error}
           </p>
         )}
-        <button type="submit" className="primary big" disabled={submitting}>
+        <button type="submit" className="primary big" disabled={submitting || analysing}>
           {submitting ? (
             <>
-              <span className="spinner" aria-hidden="true" /> Reading your report…
+              <span className="spinner" aria-hidden="true" />{" "}
+              {analysis && !analysisStale ? "Sending…" : "Reading your report…"}
             </>
           ) : (
             "Send report"
@@ -122,6 +195,59 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
         </button>
       </div>
     </form>
+  );
+}
+
+const CONFIDENCE_TEXT = { high: "AI is fairly sure", medium: "AI is somewhat sure", low: "AI is not sure" } as const;
+
+/** What the AI thinks the photo shows. Always framed as a suggestion that staff will check. */
+function AnalysisCard({ analysis, stale }: { analysis: Analysis; stale: boolean }) {
+  const { ai, ai_source } = analysis;
+  if (ai_source === "fallback") {
+    return (
+      <p className="notice notice-warn">
+        We couldn't analyse the photo right now. Add a few words below if you can, or just send it. Staff will look at it.
+      </p>
+    );
+  }
+  return (
+    <div className="ai-card ai-preview">
+      <p className="ai-label">
+        <Icon name="sparkle" size={18} /> AI suggestion{ai_source === "simulated" && " (sample, server offline)"}
+      </p>
+      {ai.is_accessibility_barrier ? (
+        <p className="ai-category">
+          {ai.category.replaceAll("_", " ")}{" "}
+          <span className={`pill pill-${ai.severity}`}>{ai.severity} severity</span>
+        </p>
+      ) : (
+        <p className="ai-category">Doesn't look like a barrier</p>
+      )}
+      <p>{ai.summary_en}</p>
+      {ai.affects.length > 0 && (
+        <p className="muted small-text">Affects: {ai.affects.map((a) => a.replaceAll("_", " ")).join(", ")}</p>
+      )}
+      <p className="muted small-text">{CONFIDENCE_TEXT[ai.confidence]}</p>
+      {ai.privacy_flag && (
+        <p className="hint">
+          <Icon name="shield" size={16} /> It may show a face or number plate. Staff blur these before anyone else sees it.
+        </p>
+      )}
+      {ai.possible_duplicate_of && (
+        <p className="hint">
+          <Icon name="info" size={16} /> Someone may have reported this already. Send it anyway: it helps staff prioritise.
+        </p>
+      )}
+      {!ai.is_accessibility_barrier && (
+        <p className="hint">
+          <Icon name="info" size={16} /> If we got it wrong, say what the problem is below.
+        </p>
+      )}
+      <p className="hint">
+        <Icon name="info" size={16} />{" "}
+        {stale ? "You added details, so the AI will read them too when you send." : "Staff confirm or correct this."}
+      </p>
+    </div>
   );
 }
 
@@ -186,7 +312,7 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
           />
         </label>
       )}
-      <p className="hint">Optional, but it helps staff a lot. Avoid faces and number plates.</p>
+      <p className="hint">A photo is often enough: the AI can describe it for you. Avoid faces and number plates.</p>
       {error && (
         <p className="notice notice-error" role="alert">
           {error}
@@ -196,7 +322,15 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
   );
 }
 
-function Describe({ text, setText }: { text: string; setText: (fn: (prev: string) => string) => void }) {
+function Describe({
+  text,
+  setText,
+  required,
+}: {
+  text: string;
+  setText: (fn: (prev: string) => string) => void;
+  required: boolean;
+}) {
   const { profile } = useAccount();
   const [speechLang, setSpeechLang] = useState<string>(speechLangFor(profile?.language) ?? SPEECH_LANGS[0].code);
   const appendText = useCallback((t: string) => setText((prev) => (prev ? `${prev} ${t}` : t)), [setText]);
@@ -212,7 +346,7 @@ function Describe({ text, setText }: { text: string; setText: (fn: (prev: string
         value={text}
         onChange={(e) => setText(() => e.target.value)}
         rows={4}
-        required
+        required={required}
         placeholder="e.g. Kerb tepi jalan pecah, susah untuk kerusi roda"
       />
       <p className="hint">Bahasa Malaysia, English, 中文 or தமிழ் are all fine.</p>
