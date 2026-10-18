@@ -159,3 +159,12 @@ def test_analysis_not_reused_when_text_changes(monkeypatch):
     a = client.post("/reports/analyse", json={"photo_url": url, "lat": 5.71, "lng": 100.45}).json()
     client.post("/reports", json={"photo_url": url, "text": "Tangga", "lat": 5.71, "lng": 100.45, "analysis_id": a["analysis_id"]})
     assert len(calls) == 2 and calls[1]["text"] == "Tangga"
+
+
+def test_cors_allows_local_dashboard_on_any_port():
+    for origin in ("http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:8080", "https://localhost"):
+        r = client.get("/reports", headers={"Origin": origin})
+        assert r.headers.get("access-control-allow-origin") == origin, origin
+    for origin in ("http://evil.example", "http://localhost.evil.example", "https://localhost:5173.evil.example"):
+        r = client.get("/reports", headers={"Origin": origin})
+        assert "access-control-allow-origin" not in r.headers, origin

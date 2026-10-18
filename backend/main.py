@@ -14,7 +14,7 @@ from pydantic import ValidationError
 import mock_data
 import store
 from config import (
-    CORS_ORIGINS, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, SEVERITY_SCORE, STORE_PATH, UPLOAD_DIR,
+    CORS_ORIGIN_REGEX, CORS_ORIGINS, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, SEVERITY_SCORE, STORE_PATH, UPLOAD_DIR,
     UPLOAD_MAX_BYTES, Profile, ReportStatus,
 )
 from intake.images import process_image
@@ -31,6 +31,7 @@ app = FastAPI(title="BeeAble API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
 )

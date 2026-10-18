@@ -84,6 +84,8 @@ PRECINCT_CENTER = (5.714050829302482, 100.45039616486677)
 
 # https://localhost is the Android app (Capacitor WebView); :5173 is the Vite dev server.
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://localhost,http://localhost:5173").split(",")
+# Plus the local dashboard on any port (Vite moves to 5174+ when 5173 is busy). Local-only origins.
+CORS_ORIGIN_REGEX = r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 # Paths
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
