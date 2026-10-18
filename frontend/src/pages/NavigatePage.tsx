@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Icon, POI_ICON, PROFILE_ICON } from "../components/Icon";
+import { Icon, POI_ICON } from "../components/Icon";
 import { MapView, type MapFocus } from "../components/MapView";
+import { ProfilePicker } from "../components/ProfilePicker";
 import { RouteCard, RouteSkeleton } from "../components/RouteCard";
 import { RouteLegend } from "../components/RouteLegend";
-import { DESTINATIONS, PROFILES } from "../config";
+import { DESTINATIONS } from "../config";
 import { LOCATION_MESSAGE, distanceM, useLocation } from "../hooks/useLocation";
 import { useReports } from "../hooks/useReports";
 import { useRoute } from "../hooks/useRoute";
@@ -172,36 +173,5 @@ export function NavigatePage() {
         )}
       </section>
     </div>
-  );
-}
-
-function ProfilePicker({
-  profile,
-  onChange,
-  compact = false,
-}: {
-  profile: Profile;
-  onChange: (p: Profile) => void;
-  compact?: boolean;
-}) {
-  return (
-    <fieldset className={compact ? "segmented compact" : "segmented"}>
-      <legend className={compact ? "visually-hidden" : undefined}>How do you get around?</legend>
-      {PROFILES.map((p) => (
-        <label key={p.id} className="segment">
-          <input type="radio" name="profile" value={p.id} checked={profile === p.id} onChange={() => onChange(p.id)} />
-          <span className="segment-body">
-            <span className="segment-icon">
-              <Icon name={PROFILE_ICON[p.id]} size={compact ? 20 : 26} />
-            </span>
-            <span className="segment-label">{p.label}</span>
-            {!compact && <span className="segment-hint">{p.hint}</span>}
-            <span className="segment-check">
-              <Icon name="check" size={16} />
-            </span>
-          </span>
-        </label>
-      ))}
-    </fieldset>
   );
 }

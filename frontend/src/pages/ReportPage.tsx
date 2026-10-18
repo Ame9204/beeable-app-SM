@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { LOCATION_MESSAGE, useLocation } from "../hooks/useLocation";
 import { SPEECH_LANGS, useSpeechInput } from "../hooks/useSpeechInput";
+import { useAccount } from "../hooks/useAccount";
+import { speechLangFor } from "../account";
 import { pickPhoto } from "../nativeCamera";
 import { isNative } from "../platform";
 import type { Report } from "../types";
@@ -195,7 +197,8 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
 }
 
 function Describe({ text, setText }: { text: string; setText: (fn: (prev: string) => string) => void }) {
-  const [speechLang, setSpeechLang] = useState<string>(SPEECH_LANGS[0].code);
+  const { profile } = useAccount();
+  const [speechLang, setSpeechLang] = useState<string>(speechLangFor(profile?.language) ?? SPEECH_LANGS[0].code);
   const appendText = useCallback((t: string) => setText((prev) => (prev ? `${prev} ${t}` : t)), [setText]);
   const speech = useSpeechInput(appendText);
 

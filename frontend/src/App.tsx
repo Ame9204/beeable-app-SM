@@ -1,15 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { App as NativeApp } from "@capacitor/app";
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { MOCK_FALLBACK_EVENT } from "./api";
 import { USE_MOCKS } from "./config";
+import { AuthPage } from "./pages/AuthPage";
 import { Insights } from "./pages/Insights";
+import { Landing } from "./pages/Landing";
 import { NavigatePage } from "./pages/NavigatePage";
+import { ProfileSetup } from "./pages/ProfileSetup";
 import { ReportPage } from "./pages/ReportPage";
 import { isNative } from "./platform";
+import { AccountMenu } from "./components/AccountMenu";
 import { Icon, Logo, type IconName } from "./components/Icon";
+import { useAccount } from "./hooks/useAccount";
+
+// Full-screen onboarding screens: no header or tab bar.
+const ONBOARDING_PATHS = ["/welcome", "/login", "/register", "/setup"];
 
 export function App() {
+  const { pathname } = useLocation();
   const [offline, setOffline] = useState(USE_MOCKS);
   useEffect(() => {
     const onFallback = () => setOffline(true);
@@ -28,6 +37,19 @@ export function App() {
     };
   }, []);
 
+  if (ONBOARDING_PATHS.includes(pathname)) {
+    return (
+      <main id="main" className="onboard-shell">
+        <Routes>
+          <Route path="/welcome" element={<Landing />} />
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route path="/setup" element={<RequireSession><ProfileSetup /></RequireSession>} />
+        </Routes>
+      </main>
+    );
+  }
+
   return (
     <div className="app">
       <a href="#main" className="skip-link">
@@ -37,7 +59,10 @@ export function App() {
         <span className="brand">
           <Logo /> BeeAble
         </span>
-        <TabNav className="tabs-top" />
+        <div className="topbar-end">
+          <TabNav className="tabs-top" />
+          <AccountMenu />
+        </div>
       </header>
       {offline && (
         <p className="offline-banner" role="status">
@@ -47,14 +72,28 @@ export function App() {
       )}
       <main id="main">
         <Routes>
-          <Route path="/" element={<NavigatePage />} />
-          <Route path="/report" element={<ReportPage />} />
+          <Route path="/" element={<RequireOnboarding><NavigatePage /></RequireOnboarding>} />
+          <Route path="/report" element={<RequireOnboarding><ReportPage /></RequireOnboarding>} />
           <Route path="/insights" element={<Insights />} />
         </Routes>
       </main>
       <TabNav className="tabs-bottom" />
     </div>
   );
+}
+
+/** Resident screens: first launch goes through landing → (account) → profile. Staff /insights is never gated. */
+function RequireOnboarding({ children }: { children: ReactNode }) {
+  const { state } = useAccount();
+  if (state === "landing") return <Navigate to="/welcome" replace />;
+  if (state === "profile") return <Navigate to="/setup" replace />;
+  return children;
+}
+
+function RequireSession({ children }: { children: ReactNode }) {
+  const { session, state } = useAccount();
+  if (!session && state !== "done") return <Navigate to="/welcome" replace />;
+  return children;
 }
 
 // The Android app is the resident app; staff use /insights on the web.
