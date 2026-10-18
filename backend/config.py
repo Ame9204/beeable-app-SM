@@ -101,7 +101,7 @@ WALK_SPEED_MPS = 1.0  # conservative (wheelchair / elderly) for "about N min" in
 
 # AI intake
 INTAKE_PROVIDER = os.getenv("INTAKE_PROVIDER", "gemini")  # gemini | cached | none
-INTAKE_MODEL = os.getenv("INTAKE_MODEL", "gemini-2.5-flash")
+INTAKE_MODEL = os.getenv("INTAKE_MODEL", "gemini-3.8-flash")  # 2.5 Flash is closed to new API keys
 INTAKE_TIMEOUT_S = float(os.getenv("INTAKE_TIMEOUT_S", "8"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
