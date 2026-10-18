@@ -24,3 +24,19 @@ export const DESTINATIONS = [
   { id: "surau", name: "Pusat Islam", type: "mosque_surau", lat: 5.710421138824264, lng: 100.44729553127485 },
   { id: "bus", name: "Depo Bas", type: "bus_stop", lat: 5.7131192808178195, lng: 100.4492427039137 },
 ] as const;
+// Barrier categories from the AI schema (backend/config.py BARRIER_CATEGORIES), with staff-facing labels.
+export const CATEGORIES = [
+  { id: "steps_no_ramp", label: "Steps, no ramp" },
+  { id: "high_kerb", label: "High kerb" },
+  { id: "damaged_kerb", label: "Damaged kerb" },
+  { id: "missing_ramp", label: "Missing ramp" },
+  { id: "broken_paving", label: "Broken paving" },
+  { id: "obstruction", label: "Obstruction" },
+  { id: "steep_slope", label: "Steep slope" },
+  { id: "no_crossing", label: "No safe crossing" },
+  { id: "other", label: "Other" },
+  { id: "not_a_barrier", label: "Not a barrier" },
+] as const;
+
+// Staff dashboard polls for new reports this often (only while the tab is visible).
+export const INSIGHTS_REFRESH_MS = 15_000;

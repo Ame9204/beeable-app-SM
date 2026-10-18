@@ -1,7 +1,9 @@
 // API client. Falls back to in-browser mocks when the backend is unreachable or USE_MOCKS is set.
 import { API_URL, USE_MOCKS } from "./config";
 import * as mocks from "./mocks";
-import type { AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse } from "./types";
+import type {
+  AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportEdits, ReportStatus, RouteResponse,
+} from "./types";
 
 /** Fired when a request falls back to in-browser sample data, so the UI can say so. */
 export const MOCK_FALLBACK_EVENT = "beeable:mock-fallback";
@@ -60,9 +62,10 @@ export const api = {
       mocks.mockCreateReport(body),
     ),
 
-  patchReport: (id: string, status: Exclude<ReportStatus, "unverified">) =>
-    request<Report>(`/reports/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }, () =>
-      mocks.mockPatchReport(id, status),
+  /** `edits` are staff corrections to the AI fields (e.g. category, severity); logged next to the AI answer. */
+  patchReport: (id: string, status: Exclude<ReportStatus, "unverified">, edits?: ReportEdits) =>
+    request<Report>(`/reports/${id}`, { method: "PATCH", body: JSON.stringify({ status, edits }) }, () =>
+      mocks.mockPatchReport(id, status, edits),
     ),
 
   priorities: () => request<Priority[]>("/priorities", undefined, mocks.mockPriorities),

@@ -104,3 +104,6 @@ export interface AnalyseRequest {
   lat: number;
   lng: number;
 }
+
+/** Staff corrections sent with PATCH /reports/{id}. */
+export type ReportEdits = Partial<Pick<AISuggestion, "category" | "severity" | "is_accessibility_barrier">>;

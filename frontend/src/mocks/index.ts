@@ -1,7 +1,8 @@
 // In-browser mocks matching the API contract. Used when VITE_USE_MOCKS=true or the API is down.
 // Keep in step with backend/mock_data.py.
 import type {
-  AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportStatus, RouteResponse, SegmentProps,
+  AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportEdits, ReportStatus, RouteResponse,
+  SegmentProps,
 } from "../types";
 
 type LatLng = [number, number];
@@ -121,11 +122,14 @@ export function mockCreateReport({ analysis_id: _analysis, ...body }: ReportCrea
   return report;
 }
 
-export function mockPatchReport(id: string, status: Exclude<ReportStatus, "unverified">): Report {
+export function mockPatchReport(id: string, status: Exclude<ReportStatus, "unverified">, edits?: ReportEdits): Report {
   const now = new Date().toISOString();
   reports = reports.map((r) =>
     r.id === id
-      ? { ...r, status, verified_at: status === "verified" ? now : r.verified_at, resolved_at: status === "resolved" ? now : r.resolved_at }
+      ? {
+          ...r, status, ai: { ...r.ai, ...edits },
+          verified_at: status === "verified" ? now : r.verified_at, resolved_at: status === "resolved" ? now : r.resolved_at,
+        }
       : r,
   );
   return reports.find((r) => r.id === id)!;

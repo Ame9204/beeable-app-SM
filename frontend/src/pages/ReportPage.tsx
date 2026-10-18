@@ -42,6 +42,7 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analysedText, setAnalysedText] = useState("");
   const [analysing, setAnalysing] = useState(false);
+  const [analyseError, setAnalyseError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
@@ -53,6 +54,7 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
     setPhotoState(f);
     setPhotoUrl(null);
     setAnalysis(null);
+    setAnalyseError(false);
   }
 
   async function ensureUploaded(): Promise<string | null> {
@@ -65,14 +67,15 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
 
   async function analyse() {
     setAnalysing(true);
-    setError(null);
+    setAnalyseError(false);
     try {
       const [[lat, lng], url] = await Promise.all([location.locate(), ensureUploaded()]);
       const result = await api.analyse({ photo_url: url ?? "", text, lat, lng });
       setAnalysis(result);
       setAnalysedText(text.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      console.warn("[report] analyse failed", err);
+      setAnalyseError(true);
     } finally {
       setAnalysing(false);
     }
@@ -131,6 +134,11 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
                   </>
                 )}
               </button>
+            )}
+            {analyseError && (
+              <p className="notice notice-warn" role="alert">
+                The AI couldn't look at your photo right now. You can still send the report: staff will check the photo.
+              </p>
             )}
           </div>
         )}
