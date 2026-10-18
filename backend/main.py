@@ -14,7 +14,8 @@ from pydantic import ValidationError
 import mock_data
 import store
 from config import (
-    CORS_ORIGINS, SEVERITY_SCORE, STORE_PATH, UPLOAD_DIR, UPLOAD_MAX_BYTES, Profile, ReportStatus,
+    CORS_ORIGINS, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, SEVERITY_SCORE, STORE_PATH, UPLOAD_DIR,
+    UPLOAD_MAX_BYTES, Profile, ReportStatus,
 )
 from intake.images import process_image
 from intake.service import nearest_open, run_intake
@@ -78,7 +79,20 @@ def _parse_latlng(value: str, name: str) -> tuple[float, float]:
 @app.get("/health")
 def health() -> dict:
     # graph info makes it easy to tell which backend version a deployment is running
-    return {"ok": True, "routing": "campus_graph", "graph_edges": len(CAMPUS.edges), "built_at": CAMPUS.meta["built_at"]}
+    from intake import service as intake_service  # LAST_ERROR changes at runtime
+
+    return {
+        "ok": True,
+        "routing": "campus_graph",
+        "graph_edges": len(CAMPUS.edges),
+        "built_at": CAMPUS.meta["built_at"],
+        "intake": {
+            "provider": INTAKE_PROVIDER,
+            "model": INTAKE_MODEL,
+            "key_set": bool(GEMINI_API_KEY),
+            "last_error": intake_service.LAST_ERROR,
+        },
+    }
 
 
 @app.get("/route", response_model=RouteResponse)

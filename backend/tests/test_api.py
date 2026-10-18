@@ -98,3 +98,10 @@ def test_reports_get_an_edge_id():
 def test_route_off_campus_is_422():
     r = client.get("/route", params={"from": "5.80,100.50", "to": "5.7099,100.4466"})
     assert r.status_code == 422
+
+
+def test_health_reports_intake_status_without_the_key():
+    client.post("/reports", json={"text": "x", "lat": 5.71, "lng": 100.45})  # INTAKE_PROVIDER=none in tests
+    intake = client.get("/health").json()["intake"]
+    assert intake["key_set"] in (True, False)
+    assert "not set" in intake["last_error"]["reason"]

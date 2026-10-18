@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import math
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Iterable
 
@@ -18,6 +19,14 @@ from intake.schema import AISource, AISuggestion
 log = logging.getLogger("beeable.intake")
 
 OPEN_STATUSES = ("unverified", "verified", "in_progress")
+# Last intake problem, shown on /health so a failing deployment is easy to diagnose (never contains the key).
+LAST_ERROR: dict[str, str] | None = None
+
+
+def _record_error(reason: str) -> None:
+    global LAST_ERROR
+    LAST_ERROR = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "reason": reason[:300]}
+    log.warning("intake fallback: %s", reason)
 MALAY_HINTS = (
     "rosak", "jalan", "tangga", "tiada", "kaki lima", "tak ", "boleh", "susah", "pecah",
     "tinggi", "laluan", "longkang", "kerusi roda", "curam", "halang", "lubang",
@@ -106,6 +115,7 @@ def run_intake(
         if isinstance(provider, CachedProvider):
             source = "cached"
     if provider is None:
+        _record_error("no AI provider configured (INTAKE_PROVIDER / GEMINI_API_KEY not set on the server)")
         return fallback_suggestion(text), "fallback"
 
     prompt = build_user_message(text, lat, lng, nearby)
@@ -113,12 +123,12 @@ def run_intake(
         try:
             raw = provider.suggest(image, mime, prompt)
         except Exception as exc:  # timeout, auth, quota: don't retry, so the resident isn't kept waiting
-            log.warning("intake provider %s failed: %s", provider.name, exc)
+            _record_error(f"{provider.name} call failed: {type(exc).__name__}: {exc}")
             break
         try:
             suggestion = _parse(raw)
         except (json.JSONDecodeError, ValidationError) as exc:
-            log.warning("intake attempt %d invalid output: %s", attempt, exc)
+            _record_error(f"{provider.name} attempt {attempt} returned invalid JSON: {exc}")
             continue
         if suggestion.possible_duplicate_of not in {n["id"] for n in nearby}:
             suggestion.possible_duplicate_of = None  # never trust an id we didn't send
