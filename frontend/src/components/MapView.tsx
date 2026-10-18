@@ -7,17 +7,44 @@ import { DEFAULT_ZOOM, PRECINCT_CENTER } from "../config";
 import type { Report, RouteResponse, SegmentProps } from "../types";
 
 // Colours are paired with dash patterns + the text legend; never colour alone.
-const SHORTEST_STYLE: PathOptions = { color: "#6b7280", weight: 4, opacity: 0.8, dashArray: "2 8" };
-const RECOMMENDED_COLOR = "#1d4ed8";
+export const ROUTE_COLOR = "#0F766E";
+export const SHORTEST_COLOR = "#6B6153";
+const SHORTEST_STYLE: PathOptions = { color: SHORTEST_COLOR, weight: 4, opacity: 0.85, dashArray: "2 8", lineCap: "round" };
+// White casing under the recommended route so it stands out on busy OSM tiles.
+const CASING_STYLE: PathOptions = { color: "#ffffff", weight: 11, opacity: 0.9, lineCap: "round" };
 
 function recommendedStyle(feature?: Feature<LineString, SegmentProps>): PathOptions {
   const unknown = !feature?.properties.surveyed;
   // Unknown segments render dashed — never treat unknown as safe.
-  return { color: RECOMMENDED_COLOR, weight: 7, opacity: 0.9, dashArray: unknown ? "10 10" : undefined };
+  return { color: ROUTE_COLOR, weight: 7, opacity: 0.95, lineCap: "round", dashArray: unknown ? "10 10" : undefined };
 }
 
-// Barriers on either route get a ⚠ marker with text, not just a colour.
-const BARRIER_ICON = divIcon({ className: "barrier-icon", html: "⚠", iconSize: [28, 28] });
+// Small SVG strings for Leaflet divIcons (Leaflet needs HTML, not React elements).
+const svg = (d: string, size = 16) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const GLYPH = {
+  alert: "M12 4 2 20h20L12 4Zm0 6v4m0 3h.01",
+  question: "M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14m0 3h.01",
+  bang: "M12 6v8m0 4h.01",
+  wrench: "M14 6a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3l9-9a4 4 0 0 1-2-2Z",
+  clinic: "M4 21V7l8-4 8 4v14H4Zm8-11v6m-3-3h6",
+  mosque: "M4 21v-8h16v8H4Zm2-8a6 6 0 0 1 12 0M12 3v4",
+  bus: "M5 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11H5Zm0-6h14M8 20v-3m8 3v-3",
+  pin: "M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
+};
+const POI_GLYPH: Record<string, string> = { clinic: GLYPH.clinic, mosque_surau: GLYPH.mosque, bus_stop: GLYPH.bus };
+
+// Barriers on either route get a warning marker with text in the popup, not just a colour.
+const BARRIER_ICON = divIcon({ className: "barrier-icon", html: svg(GLYPH.alert), iconSize: [30, 30] });
+const ORIGIN_ICON = divIcon({ className: "origin-icon", html: "<span></span>", iconSize: [22, 22] });
+const destinationIcon = (type?: string) =>
+  divIcon({
+    className: "dest-marker",
+    html: `<span>${svg(POI_GLYPH[type ?? ""] ?? GLYPH.pin, 18)}</span>`,
+    iconSize: [36, 44],
+    iconAnchor: [18, 42],
+    popupAnchor: [0, -38],
+  });
 
 function barrierSegments(route: RouteResponse) {
   const seen = new Map<string, { at: [number, number]; text: string; impassable: boolean }>();
@@ -51,22 +78,51 @@ function FitRoute({ route, routeKey }: { route: RouteResponse | null; routeKey: 
   return null;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  unverified: "#b45309",
-  verified: "#b91c1c",
-  in_progress: "#7c3aed",
+// Report markers: each status has its own glyph and shape as well as a colour.
+const REPORT_ICONS: Record<string, ReturnType<typeof divIcon>> = {
+  unverified: divIcon({ className: "report-icon report-unverified", html: svg(GLYPH.question, 14), iconSize: [26, 26] }),
+  verified: divIcon({ className: "report-icon report-verified", html: svg(GLYPH.bang, 14), iconSize: [26, 26] }),
+  in_progress: divIcon({ className: "report-icon report-in_progress", html: svg(GLYPH.wrench, 13), iconSize: [26, 26] }),
 };
+
+/** Pan to a point whenever `focus.key` changes (locate-me, a report picked on the dashboard). */
+function FlyTo({ focus }: { focus?: MapFocus }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!focus) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    map.setView(focus.at, Math.max(map.getZoom(), 18), { animate: !reduce });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.key]);
+  return null;
+}
+
+export interface MapFocus {
+  at: [number, number];
+  key: number;
+}
+
+function Highlight({ report }: { report?: Report }) {
+  if (!report) return null;
+  return (
+    <CircleMarker center={[report.lat, report.lng]} radius={20} interactive={false} pathOptions={{ color: "#1C1408", weight: 3, fill: false, dashArray: "4 4" }} />
+  );
+}
 
 interface Props {
   route: RouteResponse | null;
   reports: Report[];
   origin?: [number, number];
   destination?: [number, number] | null;
+  destinationType?: string;
+  focus?: MapFocus;
+  /** Report to emphasise (e.g. the one picked on the dashboard). */
+  highlightId?: string;
   /** Changes whenever the route request changes; GeoJSON layers don't re-render on new data otherwise. */
   routeKey?: string;
 }
 
-export function MapView({ route, reports, origin, destination, routeKey = "route" }: Props) {
+export function MapView({ route, reports, origin, destination, destinationType, focus, highlightId, routeKey = "route" }: Props) {
   return (
     <MapContainer
       center={PRECINCT_CENTER}
@@ -77,6 +133,7 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
     >
       <AttributionControl position="topright" prefix={false} />
       <FitRoute route={route} routeKey={routeKey} />
+      <FlyTo focus={focus} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -84,6 +141,7 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
       {route && (
         <>
           <GeoJSON key={`s-${routeKey}`} data={route.shortest} style={SHORTEST_STYLE} />
+          <GeoJSON key={`c-${routeKey}`} data={route.recommended} style={CASING_STYLE} />
           <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} />
           {barrierSegments(route).map(([id, b]) => (
             <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={`Barrier: ${b.text}`}>
@@ -103,23 +161,24 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
         </>
       )}
       {origin && (
-        <CircleMarker center={origin} radius={9} pathOptions={{ color: "#111827", fillOpacity: 1 }}>
+        <Marker position={origin} icon={ORIGIN_ICON} title="Start: you are here">
           <Popup>You are here</Popup>
-        </CircleMarker>
+        </Marker>
       )}
       {destination && (
-        <CircleMarker center={destination} radius={9} pathOptions={{ color: "#047857", fillOpacity: 1 }}>
+        <Marker position={destination} icon={destinationIcon(destinationType)} title="Destination">
           <Popup>Destination</Popup>
-        </CircleMarker>
+        </Marker>
       )}
       {reports
-        .filter((r) => r.status in STATUS_COLOR)
+        .filter((r) => r.status in REPORT_ICONS)
         .map((r) => (
-          <CircleMarker
+          <Marker
             key={r.id}
-            center={[r.lat, r.lng]}
-            radius={8}
-            pathOptions={{ color: STATUS_COLOR[r.status], fillOpacity: 0.6 }}
+            position={[r.lat, r.lng]}
+            icon={REPORT_ICONS[r.status]}
+            title={`Report ${r.reference_number}: ${r.status.replace("_", " ")}`}
+            zIndexOffset={r.id === highlightId ? 1000 : 0}
           >
             {/* No reporter identity is ever shown. */}
             <Popup>
@@ -129,8 +188,9 @@ export function MapView({ route, reports, origin, destination, routeKey = "route
               <br />
               Source: {r.source}
             </Popup>
-          </CircleMarker>
+          </Marker>
         ))}
+      {highlightId && <Highlight report={reports.find((r) => r.id === highlightId)} />}
     </MapContainer>
   );
 }

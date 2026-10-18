@@ -7,6 +7,7 @@ import { Insights } from "./pages/Insights";
 import { NavigatePage } from "./pages/NavigatePage";
 import { ReportPage } from "./pages/ReportPage";
 import { isNative } from "./platform";
+import { Icon, Logo, type IconName } from "./components/Icon";
 
 export function App() {
   const [offline, setOffline] = useState(USE_MOCKS);
@@ -34,14 +35,14 @@ export function App() {
       </a>
       <header className="topbar">
         <span className="brand">
-          <span className="brand-mark" aria-hidden="true">⬢</span> BeeAble
+          <Logo /> BeeAble
         </span>
         <TabNav className="tabs-top" />
       </header>
       {offline && (
         <p className="offline-banner" role="status">
-          Can't reach the BeeAble server, so you're seeing <strong>sample data</strong>. Reports you send now
-          won't reach staff.
+          <Icon name="alert" size={20} /> <span>Can't reach the BeeAble server, so you're seeing <strong>sample data</strong>. Reports you send now
+          won't reach staff.</span>
         </p>
       )}
       <main id="main">
@@ -56,25 +57,25 @@ export function App() {
   );
 }
 
+// The Android app is the resident app; staff use /insights on the web.
+const TABS: { to: string; label: string; icon: IconName; staff?: boolean }[] = [
+  { to: "/", label: "Navigate", icon: "map" },
+  { to: "/report", label: "Report", icon: "camera" },
+  { to: "/insights", label: "Staff", icon: "clipboard", staff: true },
+];
+
 /** Same links twice: in the header on wide screens, as a bottom tab bar on phones (CSS decides). */
 function TabNav({ className }: { className: string }) {
   return (
     <nav aria-label="Main" className={className}>
-      <NavLink to="/" end>
-        <span className="tab-icon" aria-hidden="true">🗺</span>
-        <span>Navigate</span>
-      </NavLink>
-      <NavLink to="/report">
-        <span className="tab-icon" aria-hidden="true">📷</span>
-        <span>Report</span>
-      </NavLink>
-      {/* The Android app is the resident app; staff use /insights on the web. */}
-      {!isNative && (
-        <NavLink to="/insights">
-          <span className="tab-icon" aria-hidden="true">📋</span>
-          <span>Staff</span>
+      {TABS.filter((t) => !(t.staff && isNative)).map((t) => (
+        <NavLink key={t.to} to={t.to} end={t.to === "/"}>
+          <span className="tab-icon">
+            <Icon name={t.icon} />
+          </span>
+          <span>{t.label}</span>
         </NavLink>
-      )}
+      ))}
     </nav>
   );
 }

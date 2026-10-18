@@ -1,29 +1,63 @@
-import { useEffect, useRef, useState } from "react";
-import { MapView } from "../components/MapView";
+import { useState } from "react";
+import { Icon, POI_ICON, PROFILE_ICON } from "../components/Icon";
+import { MapView, type MapFocus } from "../components/MapView";
+import { RouteCard, RouteSkeleton } from "../components/RouteCard";
 import { RouteLegend } from "../components/RouteLegend";
-import { DESTINATIONS, PROFILES, WALK_SPEED_MPS } from "../config";
-import { LOCATION_MESSAGE, useLocation } from "../hooks/useLocation";
+import { DESTINATIONS, PROFILES } from "../config";
+import { LOCATION_MESSAGE, distanceM, useLocation } from "../hooks/useLocation";
 import { useReports } from "../hooks/useReports";
 import { useRoute } from "../hooks/useRoute";
-import type { Profile, RouteResponse } from "../types";
+import { useSheet } from "../hooks/useSheet";
+import type { Profile } from "../types";
 
-const PROFILE_ICON: Record<Profile, string> = { step_free: "♿", easy_walking: "🚶" };
-const DEST_ICON: Record<string, string> = { clinic: "🏥", mosque_surau: "🕌", bus_stop: "🚌" };
+const PROFILE_KEY = "beeable.profile";
+const POI_LABEL: Record<string, string> = { clinic: "Clinic", mosque_surau: "Surau", bus_stop: "Bus stop" };
+
+function savedProfile(): Profile {
+  try {
+    const p = localStorage.getItem(PROFILE_KEY);
+    if (p === "step_free" || p === "easy_walking") return p;
+  } catch {
+    /* storage blocked: fall through */
+  }
+  return "step_free";
+}
 
 export function NavigatePage() {
-  const [profile, setProfile] = useState<Profile>("step_free");
+  const [profile, setProfileState] = useState<Profile>(savedProfile);
   const [destId, setDestId] = useState<string>("");
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [focus, setFocus] = useState<MapFocus>();
   const dest = DESTINATIONS.find((d) => d.id === destId);
   const to: [number, number] | null = dest ? [dest.lat, dest.lng] : null;
   const location = useLocation();
   const { route, loading, error, version } = useRoute(location.position, to, profile);
   const { reports } = useReports();
+  const sheet = useSheet("half");
+
+  function setProfile(p: Profile) {
+    setProfileState(p);
+    try {
+      localStorage.setItem(PROFILE_KEY, p);
+    } catch {
+      /* not essential */
+    }
+  }
 
   function chooseDestination(id: string) {
     setDestId(id);
+    sheet.setSnap("half");
     // Ask for location the first time it's needed, not on app start.
     if (location.status !== "ok") location.locate();
   }
+
+  async function locateMe() {
+    const at = await location.locate();
+    setFocus({ at, key: Date.now() });
+  }
+
+  const locationNote =
+    location.status !== "idle" && location.status !== "ok" ? LOCATION_MESSAGE[location.status] : null;
 
   return (
     <div className="navigate">
@@ -32,125 +66,142 @@ export function NavigatePage() {
         reports={reports}
         origin={location.position}
         destination={to}
+        destinationType={dest?.type}
+        focus={focus}
         routeKey={String(version)}
       />
 
-      <section className="sheet" aria-labelledby="nav-heading">
-        <div className="sheet-handle" aria-hidden="true" />
-        <h1 id="nav-heading" className="sheet-title">
-          Plan a walk
-        </h1>
-
-        <fieldset className="segmented">
-          <legend>How do you get around?</legend>
-          {PROFILES.map((p) => (
-            <label key={p.id} className="segment">
-              <input
-                type="radio"
-                name="profile"
-                value={p.id}
-                checked={profile === p.id}
-                onChange={() => setProfile(p.id)}
-              />
-              <span className="segment-body">
-                <span className="segment-icon" aria-hidden="true">
-                  {PROFILE_ICON[p.id]}
-                </span>
-                <span className="segment-label">{p.label}</span>
-                <span className="segment-hint">{p.hint}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
-        <fieldset className="chips">
-          <legend>Where to?</legend>
-          <div className="chip-row">
-            {DESTINATIONS.map((d) => (
-              <label key={d.id} className="chip">
-                <input
-                  type="radio"
-                  name="destination"
-                  value={d.id}
-                  checked={destId === d.id}
-                  onChange={() => chooseDestination(d.id)}
-                />
-                <span>
-                  <span aria-hidden="true">{DEST_ICON[d.type] ?? "📍"}</span> {d.name}
-                </span>
-              </label>
-            ))}
+      <div className="map-tools">
+        <button type="button" className="fab" onClick={locateMe} aria-label="Show my location">
+          <Icon name="locate" />
+        </button>
+        <button
+          type="button"
+          className="fab"
+          onClick={() => setLegendOpen((o) => !o)}
+          aria-expanded={legendOpen}
+          aria-controls="map-key"
+          aria-label="Map key"
+        >
+          <Icon name="layers" />
+        </button>
+        {legendOpen && (
+          <div id="map-key" className="map-key card" role="region" aria-label="Map key">
+            <div className="map-key-head">
+              <h2>Map key</h2>
+              <button type="button" className="icon-button" onClick={() => setLegendOpen(false)} aria-label="Close map key">
+                <Icon name="x" />
+              </button>
+            </div>
+            <RouteLegend />
           </div>
-        </fieldset>
+        )}
+      </div>
 
-        <div aria-live="polite" className="route-area">
-          {!destId && <p className="hint">Pick a destination to see the route that suits you.</p>}
-          {destId && location.status !== "idle" && location.status !== "ok" && (
-            <p className="hint">📍 {LOCATION_MESSAGE[location.status]}</p>
-          )}
-          {loading && <p className="hint">Finding a route…</p>}
-          {error && (
-            <p className="notice notice-error" role="alert">
-              Could not load a route: {error}
-            </p>
-          )}
-          {route && !loading && <RouteCard route={route} />}
-        </div>
+      <section className={`sheet sheet-${sheet.snap}`} aria-labelledby="nav-heading">
+        <button type="button" className="sheet-handle" {...sheet.handleProps}>
+          <span className="sheet-grip" aria-hidden="true" />
+          <span className="visually-hidden">{sheet.snap === "full" ? "Shrink panel" : "Expand panel"}</span>
+        </button>
+
+        {!dest ? (
+          <>
+            <h1 id="nav-heading" className="sheet-title">
+              Where would you like to go?
+            </h1>
+            <ProfilePicker profile={profile} onChange={setProfile} />
+            <h2 className="list-heading">Destination</h2>
+            {/* Buttons, not radios: arrowing through radios would start a route for each one. */}
+            <ul className="dest-list">
+              {DESTINATIONS.map((d) => (
+                <li key={d.id}>
+                  <button type="button" className="dest" onClick={() => chooseDestination(d.id)}>
+                    <span className="dest-icon">
+                      <Icon name={POI_ICON[d.type] ?? "pin"} />
+                    </span>
+                    <span className="dest-text">
+                      <span className="dest-name">{d.name}</span>
+                      <span className="dest-meta">
+                        {POI_LABEL[d.type] ?? "Place"}
+                        {location.status === "ok" && ` · ${Math.round(distanceM(location.position, [d.lat, d.lng]))} m away`}
+                      </span>
+                    </span>
+                    <Icon name="chevronRight" className="dest-go" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <div className="trip">
+              <span className="trip-icon">
+                <Icon name={POI_ICON[dest.type] ?? "pin"} />
+              </span>
+              <div className="trip-text">
+                <span className="trip-label">Route to</span>
+                <h1 id="nav-heading" className="trip-name">
+                  {dest.name}
+                </h1>
+              </div>
+              <button type="button" className="secondary small" onClick={() => setDestId("")}>
+                Change
+              </button>
+            </div>
+            <ProfilePicker profile={profile} onChange={setProfile} compact />
+            <div aria-live="polite" className="route-area">
+              {locationNote && (
+                <p className="hint">
+                  <Icon name="pin" size={18} /> {locationNote}
+                </p>
+              )}
+              {error && (
+                <p className="notice notice-error" role="alert">
+                  Could not load a route: {error}
+                </p>
+              )}
+              {loading && (
+                <>
+                  <p className="visually-hidden">Finding a route…</p>
+                  <RouteSkeleton />
+                </>
+              )}
+              {route && !loading && <RouteCard route={route} />}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
 }
 
-function RouteCard({ route }: { route: RouteResponse }) {
-  const ref = useRef<HTMLElement>(null);
-  // On phones the card starts below the fold of the sheet; bring each new route into view.
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ref.current?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
-  }, [route]);
-  const rec = route.costs.recommended;
-  const minutes = Math.max(1, Math.round(rec.length_m / WALK_SPEED_MPS / 60));
-  const surveyed = Math.round(route.surveyed_share * 100);
-
-  // Never call a route "accessible" — see CLAUDE.md.
-  let status = { tone: "ok", icon: "✓", text: "No known barriers for your profile" };
-  if (rec.least_bad) {
-    status = { tone: "danger", icon: "⚠", text: `No route avoids every barrier. Least-bad option: passes ${rec.blocked_by}` };
-  } else if ((rec.known_barriers ?? 0) > 0) {
-    status = { tone: "warn", icon: "⚠", text: "Best route we found, but it still has known barriers" };
-  }
-
+function ProfilePicker({
+  profile,
+  onChange,
+  compact = false,
+}: {
+  profile: Profile;
+  onChange: (p: Profile) => void;
+  compact?: boolean;
+}) {
   return (
-    <article ref={ref} className="route-card" aria-label="Recommended route">
-      <dl className="stats">
-        <div>
-          <dt>Distance</dt>
-          <dd>{rec.length_m} m</dd>
-        </div>
-        <div>
-          <dt>Time</dt>
-          <dd>~{minutes} min</dd>
-        </div>
-        <div>
-          <dt>Surveyed</dt>
-          <dd>{surveyed}%</dd>
-        </div>
-      </dl>
-      <p className={`status status-${status.tone}`} role={status.tone === "danger" ? "alert" : undefined}>
-        <span aria-hidden="true">{status.icon}</span> {status.text}
-      </p>
-      <details className="why" open>
-        <summary>Why this route?</summary>
-        <ul>
-          {route.explanation.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      </details>
-      <details className="why">
-        <summary>Map key</summary>
-        <RouteLegend />
-      </details>
-    </article>
+    <fieldset className={compact ? "segmented compact" : "segmented"}>
+      <legend className={compact ? "visually-hidden" : undefined}>How do you get around?</legend>
+      {PROFILES.map((p) => (
+        <label key={p.id} className="segment">
+          <input type="radio" name="profile" value={p.id} checked={profile === p.id} onChange={() => onChange(p.id)} />
+          <span className="segment-body">
+            <span className="segment-icon">
+              <Icon name={PROFILE_ICON[p.id]} size={compact ? 20 : 26} />
+            </span>
+            <span className="segment-label">{p.label}</span>
+            {!compact && <span className="segment-hint">{p.hint}</span>}
+            <span className="segment-check">
+              <Icon name="check" size={16} />
+            </span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
   );
 }
