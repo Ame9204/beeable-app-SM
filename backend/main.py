@@ -23,6 +23,7 @@ from priority.inputs import poi_proximity
 from priority.score import priority_score
 from routing.router import CampusGraph, OffNetworkError
 from routing.weights import ReportEffect
+from similar import find_similar
 from schemas import (
     AISource, AISuggestion, AnalyseRequest, Analysis, Priority, Report, ReportCreate, ReportPatch, RouteResponse, ScoreBreakdown,
 )
@@ -55,6 +56,11 @@ ANALYSES: dict[str, dict] = {}
 MAX_ANALYSES = 200
 
 PHOTO_NAME = re.compile(r"^[0-9a-f]{32}\.jpg$")
+
+
+def _with_similar(r: Report) -> Report:
+    """Attach possible duplicates at response time (computed, so it follows status changes)."""
+    return r.model_copy(update={"similar": find_similar(r, REPORTS.values())})
 
 
 def _persist() -> None:
@@ -197,12 +203,12 @@ def create_report(body: ReportCreate) -> Report:
     )
     REPORTS[rid] = report
     _persist()
-    return report
+    return _with_similar(report)
 
 
 @app.get("/reports", response_model=list[Report])
 def list_reports(status: ReportStatus | None = None) -> list[Report]:
-    return [r for r in REPORTS.values() if status is None or r.status == status]
+    return [_with_similar(r) for r in REPORTS.values() if status is None or r.status == status]
 
 
 @app.patch("/reports/{report_id}", response_model=Report)
@@ -230,7 +236,7 @@ def update_report(report_id: str, body: ReportPatch) -> Report:
     })
     REPORTS[report_id] = report.model_copy(update=updates)
     _persist()
-    return REPORTS[report_id]
+    return _with_similar(REPORTS[report_id])
 
 
 @app.get("/priorities", response_model=list[Priority])
@@ -250,6 +256,6 @@ def list_priorities() -> list[Priority]:
         scored.append((priority_score(r.ai.severity, b.route_criticality, b.poi_proximity, b.report_count), r, b))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [
-        Priority(rank=i, report=r, score=round(s, 2), breakdown=b)
+        Priority(rank=i, report=_with_similar(r), score=round(s, 2), breakdown=b)
         for i, (s, r, b) in enumerate(scored, start=1)
     ]

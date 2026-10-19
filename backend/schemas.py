@@ -41,6 +41,18 @@ class Analysis(BaseModel):
     ai_source: AISource
 
 
+class SimilarReport(BaseModel):
+    """Another open report that may be the same barrier (see similar.py). A hint for staff, never automatic."""
+
+    id: str
+    reference_number: str
+    match: Literal["likely", "possible"]
+    distance_m: float
+    hours_apart: float
+    same_category: bool
+    reason: str
+
+
 class Report(BaseModel):
     id: str
     reference_number: str
@@ -57,6 +69,8 @@ class Report(BaseModel):
     created_at: datetime
     verified_at: datetime | None = None
     resolved_at: datetime | None = None
+    # Computed when the report is returned; not stored.
+    similar: list[SimilarReport] = []
 
 
 class ReportPatch(BaseModel):

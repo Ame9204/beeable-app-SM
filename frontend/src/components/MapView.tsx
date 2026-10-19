@@ -5,6 +5,7 @@ import type { Feature, LineString } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_ZOOM, PRECINCT_CENTER } from "../config";
 import type { Report, RouteResponse, SegmentProps } from "../types";
+import { BEE_SVG } from "./Bee";
 
 // Colours are paired with dash patterns + the text legend; never colour alone.
 export const ROUTE_COLOR = "#0F766E";
@@ -34,9 +35,19 @@ const GLYPH = {
 };
 const POI_GLYPH: Record<string, string> = { clinic: GLYPH.clinic, mosque_surau: GLYPH.mosque, bus_stop: GLYPH.bus };
 
-// Barriers on either route get a warning marker with text in the popup, not just a colour.
-const BARRIER_ICON = divIcon({ className: "barrier-icon", html: svg(GLYPH.alert), iconSize: [30, 30] });
-const ORIGIN_ICON = divIcon({ className: "origin-icon", html: "<span></span>", iconSize: [22, 22] });
+// Barriers on either route get a hazard-striped warning marker with text in the popup, not just a colour.
+const BARRIER_ICON = divIcon({
+  className: "barrier-icon",
+  html: `<span class="barrier-badge">${svg(GLYPH.bang, 18)}</span>`,
+  iconSize: [34, 34],
+});
+// "You are here" is a bee with a soft pulsing halo.
+const ORIGIN_ICON = divIcon({
+  className: "origin-icon",
+  html: `<span class="bee-halo"></span><span class="bee-body">${BEE_SVG}</span>`,
+  iconSize: [44, 44],
+  popupAnchor: [0, -18],
+});
 const destinationIcon = (type?: string) =>
   divIcon({
     className: "dest-marker",
@@ -83,6 +94,13 @@ const REPORT_ICONS: Record<string, ReturnType<typeof divIcon>> = {
   unverified: divIcon({ className: "report-icon report-unverified", html: svg(GLYPH.question, 14), iconSize: [26, 26] }),
   verified: divIcon({ className: "report-icon report-verified", html: svg(GLYPH.bang, 14), iconSize: [26, 26] }),
   in_progress: divIcon({ className: "report-icon report-in_progress", html: svg(GLYPH.wrench, 13), iconSize: [26, 26] }),
+};
+
+// A little personality in the popups; the plain status still follows underneath.
+const REPORT_HEADLINE: Record<string, string> = {
+  unverified: "Someone spotted something",
+  verified: "Bzzt! Confirmed obstacle",
+  in_progress: "Busy bees are fixing this",
 };
 
 /** Pan to a point whenever `focus.key` changes (locate-me, a report picked on the dashboard). */
@@ -146,15 +164,9 @@ export function MapView({ route, reports, origin, destination, destinationType, 
           {barrierSegments(route).map(([id, b]) => (
             <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={`Barrier: ${b.text}`}>
               <Popup>
-                <strong>Barrier</strong>
-                <br />
+                <span className="pop-title">Bzzt! Obstacle here</span>
                 {b.text}
-                {b.impassable && (
-                  <>
-                    <br />
-                    Impassable for your profile
-                  </>
-                )}
+                {b.impassable && <span className="pop-note">Impassable for your profile</span>}
               </Popup>
             </Marker>
           ))}
@@ -162,7 +174,10 @@ export function MapView({ route, reports, origin, destination, destinationType, 
       )}
       {origin && (
         <Marker position={origin} icon={ORIGIN_ICON} title="Start: you are here">
-          <Popup>You are here</Popup>
+          <Popup>
+            <span className="pop-title">You are here</span>
+            Buzzing along nicely.
+          </Popup>
         </Marker>
       )}
       {destination && (
@@ -182,9 +197,9 @@ export function MapView({ route, reports, origin, destination, destinationType, 
           >
             {/* No reporter identity is ever shown. */}
             <Popup>
-              <strong>{r.ai.category.replaceAll("_", " ")}</strong>
-              <br />
-              Status: {r.status === "unverified" ? "Unverified (not yet checked by staff)" : r.status}
+              <span className="pop-title">{REPORT_HEADLINE[r.status] ?? "Reported barrier"}</span>
+              <strong className="pop-cat">{r.ai.category.replaceAll("_", " ")}</strong>
+              Status: {r.status === "unverified" ? "Unverified (not yet checked by staff)" : r.status.replace("_", " ")}
               <br />
               Source: {r.source}
             </Popup>

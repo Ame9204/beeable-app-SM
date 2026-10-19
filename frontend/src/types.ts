@@ -53,6 +53,17 @@ export interface AISuggestion {
   reason: string;
 }
 
+/** Another open report that may be the same barrier (close in place and time, same or related type). */
+export interface SimilarReport {
+  id: string;
+  reference_number: string;
+  match: "likely" | "possible";
+  distance_m: number;
+  hours_apart: number;
+  same_category: boolean;
+  reason: string;
+}
+
 export interface Report {
   id: string;
   reference_number: string;
@@ -69,6 +80,8 @@ export interface Report {
   created_at: string;
   verified_at: string | null;
   resolved_at: string | null;
+  /** Computed by the server; absent in sample data. */
+  similar?: SimilarReport[];
 }
 
 export interface ReportCreate {
@@ -106,4 +119,6 @@ export interface AnalyseRequest {
 }
 
 /** Staff corrections sent with PATCH /reports/{id}. */
-export type ReportEdits = Partial<Pick<AISuggestion, "category" | "severity" | "is_accessibility_barrier">>;
+export type ReportEdits = Partial<
+  Pick<AISuggestion, "category" | "severity" | "is_accessibility_barrier" | "possible_duplicate_of">
+>;

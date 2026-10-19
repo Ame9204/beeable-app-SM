@@ -33,10 +33,15 @@ function flags(r: Report): string[] {
   if (r.ai.confidence === "low") out.push("Low AI confidence");
   if (r.ai.category === "not_a_barrier") out.push("AI: not a barrier");
   if (r.ai.privacy_flag) out.push("Privacy: faces or plates");
-  if (r.ai.possible_duplicate_of !== null) out.push(`Possible duplicate of ${r.ai.possible_duplicate_of}`);
+  const likely = (r.similar ?? []).filter((m) => m.match === "likely");
+  if (likely.length) out.push(`Likely same as ${likely.map((m) => m.reference_number).join(", ")}`);
+  else if (r.similar?.length) out.push("Possible duplicate");
+  else if (r.ai.possible_duplicate_of !== null) out.push(`AI: possible duplicate of ${r.ai.possible_duplicate_of}`);
   if (r.ai_source === "fallback") out.push("No AI answer");
   return out;
 }
+
+const isDuplicateFlag = (f: string) => f === "Possible duplicate" || f.startsWith("Likely same as");
 
 function timeAgo(iso: string | Date, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
@@ -61,8 +66,9 @@ interface Filters {
   category: string;
   severity: string;
   flaggedOnly: boolean;
+  duplicatesOnly: boolean;
 }
-const DEFAULT_FILTERS: Filters = { q: "", status: "open", category: "", severity: "", flaggedOnly: false };
+const DEFAULT_FILTERS: Filters = { q: "", status: "open", category: "", severity: "", flaggedOnly: false, duplicatesOnly: false };
 
 export function Insights() {
   const { reports, priorities, refresh, updatedAt, refreshing } = useReports({ refreshMs: INSIGHTS_REFRESH_MS });
@@ -107,6 +113,7 @@ export function Insights() {
       if (filters.category && r.ai.category !== filters.category) return false;
       if (filters.severity && r.ai.severity !== filters.severity) return false;
       if (filters.flaggedOnly && flags(r).length === 0) return false;
+      if (filters.duplicatesOnly && !r.similar?.length) return false;
       if (q && ![r.reference_number, r.original_text, r.ai.summary_en, categoryLabel(r.ai.category)].some((t) => t.toLowerCase().includes(q)))
         return false;
       return true;
@@ -274,6 +281,10 @@ export function Insights() {
                 <input type="checkbox" checked={filters.flaggedOnly} onChange={(e) => setFilters({ ...filters, flaggedOnly: e.target.checked })} />
                 Flagged only
               </label>
+              <label className="filter-check">
+                <input type="checkbox" checked={filters.duplicatesOnly} onChange={(e) => setFilters({ ...filters, duplicatesOnly: e.target.checked })} />
+                Possible duplicates
+              </label>
             </div>
             <div className="table-bar">
               <p className="muted small-text" role="status">
@@ -302,7 +313,15 @@ export function Insights() {
       <aside className="ins-side" aria-label="Report details and map">
         <section ref={detailRef} className="detail-wrap" aria-labelledby="detail-heading" tabIndex={-1}>
           {selected ? (
-            <ReportDetail key={selected.id} report={selected} priority={scoreById.get(selected.id)} onDecide={decide} onClose={() => setSelectedId(undefined)} />
+            <ReportDetail
+              key={selected.id}
+              report={selected}
+              priority={scoreById.get(selected.id)}
+              allReports={reports}
+              onSelect={select}
+              onDecide={decide}
+              onClose={() => setSelectedId(undefined)}
+            />
           ) : (
             <div className="detail-empty">
               <h2 id="detail-heading">No report selected</h2>
@@ -374,7 +393,8 @@ function ReportsTable({
         </thead>
         <tbody>
           {rows.map((r) => {
-            const f = flags(r);
+            // The duplicate chip already says this, so leave it out of the flag line.
+            const f = flags(r).filter((x) => !(r.similar?.length && isDuplicateFlag(x)));
             const p = scoreById.get(r.id);
             return (
               <tr key={r.id} className={r.id === selectedId ? "row-selected" : undefined} onClick={() => onSelect(r)}>
@@ -390,6 +410,11 @@ function ReportsTable({
                 <td>
                   <span className="cell-strong">{categoryLabel(r.ai.category)}</span>
                   <span className="cell-sub">{r.ai.summary_en}</span>
+                  {r.similar && r.similar.length > 0 && (
+                    <span className={`dup-chip${r.similar.some((m) => m.match === "likely") ? " dup-likely" : ""}`}>
+                      <Icon name="copy" size={14} /> {r.similar.some((m) => m.match === "likely") ? "Likely duplicate" : "Possible duplicate"} ({r.similar.length})
+                    </span>
+                  )}
                   {f.length > 0 && (
                     <span className="cell-flags">
                       <Icon name="alert" size={14} /> {f.join(" · ")}
@@ -466,10 +491,12 @@ function PrioritiesTable({ priorities, selectedId, onSelect }: { priorities: Pri
 }
 
 function ReportDetail({
-  report: r, priority, onDecide, onClose,
+  report: r, priority, allReports, onSelect, onDecide, onClose,
 }: {
   report: Report;
   priority?: Priority;
+  allReports: Report[];
+  onSelect: (r: Report) => void;
   onDecide: (r: Report, s: Exclude<ReportStatus, "unverified">, edits?: ReportEdits) => Promise<void>;
   onClose: () => void;
 }) {
@@ -480,12 +507,16 @@ function ReportDetail({
   const f = flags(r);
   const changed = category !== r.ai.category || severity !== r.ai.severity;
 
-  async function act(status: Exclude<ReportStatus, "unverified">) {
+  async function act(status: Exclude<ReportStatus, "unverified">, duplicateOf?: string) {
     setBusy(true);
     setError(null);
-    const edits: ReportEdits | undefined = changed
-      ? { category, severity, is_accessibility_barrier: category !== "not_a_barrier" }
-      : undefined;
+    const edits: ReportEdits | undefined =
+      changed || duplicateOf
+        ? {
+            ...(changed ? { category, severity, is_accessibility_barrier: category !== "not_a_barrier" } : {}),
+            ...(duplicateOf ? { possible_duplicate_of: duplicateOf } : {}),
+          }
+        : undefined;
     try {
       await onDecide(r, status, edits);
     } catch (err) {
@@ -581,6 +612,44 @@ function ReportDetail({
         <button type="button" className="link-button small" onClick={() => act("rejected")} disabled={busy}>
           Reject instead
         </button>
+      )}
+
+      {r.similar && r.similar.length > 0 && (
+        <>
+          <h3>Possibly the same problem</h3>
+          <p className="muted small-text">Open reports close by, sent around the same time, with the same or a related type.</p>
+          <ul className="similar-list">
+            {r.similar.map((m) => {
+              const other = allReports.find((o) => o.id === m.id);
+              return (
+                <li key={m.id} className={m.match === "likely" ? "similar-likely" : undefined}>
+                  <div className="similar-top">
+                    <span className={`dup-chip${m.match === "likely" ? " dup-likely" : ""}`}>
+                      {m.match === "likely" ? "Likely same" : "Possibly same"}
+                    </span>
+                    {other ? (
+                      <button type="button" className="row-link" onClick={() => onSelect(other)}>
+                        {m.reference_number}
+                      </button>
+                    ) : (
+                      <strong>{m.reference_number}</strong>
+                    )}
+                    {other && <StatusPill status={other.status} />}
+                  </div>
+                  <p className="small-text">
+                    {other ? `${categoryLabel(other.ai.category)} · ` : ""}
+                    {m.reason}
+                  </p>
+                  {r.status === "unverified" && (
+                    <button type="button" className="secondary small" onClick={() => act("rejected", m.id)} disabled={busy}>
+                      <Icon name="copy" size={16} /> Reject as duplicate of {m.reference_number}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       {b && priority && (

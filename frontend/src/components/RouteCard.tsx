@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { WALK_SPEED_MPS } from "../config";
 import type { PathCost, RouteResponse } from "../types";
+import { Bee } from "./Bee";
 import { Icon, type IconName } from "./Icon";
 
 const minutes = (m: number) => Math.max(1, Math.round(m / WALK_SPEED_MPS / 60));
@@ -17,15 +18,28 @@ export function RouteCard({ route }: { route: RouteResponse }) {
   const surveyed = Math.round(route.surveyed_share * 100);
 
   // Never call a route "accessible" — see CLAUDE.md.
-  let status: { tone: string; icon: IconName; text: string } = {
+  // A playful headline, then the plain facts (the facts carry the meaning, not the joke or the colour).
+  const barriers = rec.known_barriers ?? 0;
+  let status: { tone: string; icon: IconName; title: string; text: string } = {
     tone: "ok",
     icon: "check",
-    text: "No known barriers for your profile",
+    title: "Smooth flying!",
+    text: "No known barriers for your profile.",
   };
   if (rec.least_bad) {
-    status = { tone: "danger", icon: "alert", text: `No route avoids every barrier. Least-bad option: passes ${rec.blocked_by}` };
-  } else if ((rec.known_barriers ?? 0) > 0) {
-    status = { tone: "warn", icon: "alert", text: "Best route we found, but it still has known barriers" };
+    status = {
+      tone: "danger",
+      icon: "alert",
+      title: "Buzz-kill: no clear path",
+      text: `No route avoids every barrier. Least-bad option: passes ${rec.blocked_by}.`,
+    };
+  } else if (barriers > 0) {
+    status = {
+      tone: "warn",
+      icon: "alert",
+      title: "Bzz, heads up!",
+      text: `Best route we found, but it still has ${plural(barriers, "known barrier")}. Tap the striped markers on the map to see ${barriers === 1 ? "it" : "them"}.`,
+    };
   }
 
   return (
@@ -37,9 +51,15 @@ export function RouteCard({ route }: { route: RouteResponse }) {
         <p className="route-dist">{rec.length_m} m · BeeAble route</p>
       </div>
 
-      <p className={`status status-${status.tone}`} role={status.tone === "danger" ? "alert" : undefined}>
-        <Icon name={status.icon} size={20} /> <span>{status.text}</span>
-      </p>
+      <div className={`bee-alert status-${status.tone}`} role={status.tone === "danger" ? "alert" : undefined}>
+        <Bee size={44} className={status.tone === "ok" ? "bee-hover" : "bee-wiggle"} />
+        <p>
+          <strong className="bee-alert-title">
+            <Icon name={status.icon} size={18} /> {status.title}
+          </strong>
+          <span>{status.text}</span>
+        </p>
+      </div>
 
       <div className="meter-row">
         <div className="meter" aria-hidden="true">

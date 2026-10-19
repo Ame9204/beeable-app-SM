@@ -1,9 +1,14 @@
 import { ROUTE_COLOR, SHORTEST_COLOR } from "./MapView";
+import { Bee } from "./Bee";
 import { Icon } from "./Icon";
 
 export function RouteLegend() {
   return (
     <ul className="legend" aria-label="Map legend">
+      <li>
+        <Bee size={28} className="legend-icon" />
+        You are here
+      </li>
       <li>
         <svg width="36" height="12" aria-hidden="true">
           <line x1="2" y1="6" x2="34" y2="6" stroke="#fff" strokeWidth="11" strokeLinecap="round" />
@@ -25,9 +30,11 @@ export function RouteLegend() {
       </li>
       <li>
         <span className="barrier-icon legend-icon" aria-hidden="true">
-          <Icon name="alert" size={16} />
+          <span className="barrier-badge">
+            <Icon name="alert" size={14} />
+          </span>
         </span>
-        Known barrier on a route (tap for details)
+        Obstacle on a route (tap for details)
       </li>
       <li>
         <span className="report-icon report-unverified legend-icon" aria-hidden="true">

@@ -77,6 +77,18 @@ POIS = (
     {"id": "surau", "name": "Pusat Islam", "type": "mosque_surau", "lat": 5.710421138824264, "lng": 100.44729553127485},
     {"id": "bus", "name": "Depo Bas", "type": "bus_stop", "lat": 5.7131192808178195, "lng": 100.4492427039137},
 )
+# "Possibly the same problem": open reports close in place and time, with the same or a related type.
+# Team choices, not standards. "likely" needs all three to be tight; "possible" is a looser match.
+SIMILAR_RADIUS_M = 50
+SIMILAR_WINDOW_DAYS = 14
+SIMILAR_LIKELY_RADIUS_M = 25
+SIMILAR_LIKELY_WINDOW_DAYS = 7
+# Types a resident (or the AI) could easily mix up for the same barrier.
+RELATED_CATEGORIES = (
+    {"high_kerb", "damaged_kerb", "missing_ramp"},
+    {"steps_no_ramp", "missing_ramp"},
+    {"broken_paving", "damaged_kerb"},
+)
 CRITICALITY_SAMPLE_NODES = 25  # random graph nodes (seeded) added to POIs for O–D sampling
 
 # Pilot site centre (lat, lng): UiTM Kedah campus, Merbok. Keep in sync with frontend/src/config.ts.
