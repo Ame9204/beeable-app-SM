@@ -60,10 +60,30 @@ def test_wrong_category_counts_as_invalid():
     assert p.calls == 2 and source == "fallback" and ai.confidence == "low"
 
 
-def test_provider_error_falls_back_without_retry():
-    p = FakeProvider(TimeoutError("slow"))
+def test_auth_error_falls_back_without_retry():
+    p = FakeProvider(RuntimeError("ClientError: 403 PERMISSION_DENIED"))
     ai, source = intake(p)
     assert p.calls == 1 and source == "fallback" and ai.language_detected == "ms"
+
+
+def test_deadline_exceeded_is_retried_once():
+    err = RuntimeError("ServerError: 504 DEADLINE_EXCEEDED. Deadline expired before operation could complete.")
+    p = FakeProvider(err, json.dumps(VALID))
+    ai, source = intake(p)
+    assert p.calls == 2 and source == "live"
+
+
+def test_two_timeouts_fall_back():
+    p = FakeProvider(TimeoutError("slow"), TimeoutError("slow again"))
+    _, source = intake(p)
+    assert p.calls == 2 and source == "fallback"
+
+
+def test_is_transient():
+    assert service.is_transient(TimeoutError())
+    assert service.is_transient(RuntimeError("503 UNAVAILABLE"))
+    assert not service.is_transient(RuntimeError("429 RESOURCE_EXHAUSTED"))
+    assert not service.is_transient(RuntimeError("400 INVALID_ARGUMENT"))
 
 
 def test_no_provider_falls_back():

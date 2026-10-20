@@ -89,6 +89,17 @@ def is_demo_photo(image: bytes | None) -> bool:
     return bool(image) and DEMO_INTAKE_PATH.exists() and hashlib.sha256(image).hexdigest() == demo_photo_hash()
 
 
+TRANSIENT_MARKERS = ("DEADLINE_EXCEEDED", "UNAVAILABLE", "INTERNAL", "504", "503", "500", "timed out", "Timeout")
+
+
+def is_transient(exc: Exception) -> bool:
+    """Server busy / too slow: worth one more try. Auth, quota and bad-request errors are not."""
+    if isinstance(exc, TimeoutError):
+        return True
+    text = f"{type(exc).__name__}: {exc}"
+    return any(m in text for m in TRANSIENT_MARKERS)
+
+
 def _parse(raw: str) -> AISuggestion:
     raw = raw.strip()
     if raw.startswith("```"):  # tolerate a fenced reply
@@ -119,12 +130,14 @@ def run_intake(
         return fallback_suggestion(text), "fallback"
 
     prompt = build_user_message(text, lat, lng, nearby)
-    for attempt in (1, 2):  # validate; retry once on invalid output
+    for attempt in (1, 2):  # retry once on invalid output or a temporary server error (e.g. 504)
         try:
             raw = provider.suggest(image, mime, prompt)
-        except Exception as exc:  # timeout, auth, quota: don't retry, so the resident isn't kept waiting
-            _record_error(f"{provider.name} call failed: {type(exc).__name__}: {exc}")
-            break
+        except Exception as exc:
+            _record_error(f"{provider.name} attempt {attempt} failed: {type(exc).__name__}: {exc}")
+            if is_transient(exc):
+                continue
+            break  # auth, quota, bad request: retrying won't help, don't keep the resident waiting
         try:
             suggestion = _parse(raw)
         except (json.JSONDecodeError, ValidationError) as exc:

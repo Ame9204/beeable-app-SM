@@ -118,7 +118,10 @@ WALK_SPEED_MPS = 1.0  # conservative (wheelchair / elderly) for "about N min" in
 # AI intake
 INTAKE_PROVIDER = os.getenv("INTAKE_PROVIDER", "gemini")  # gemini | cached | none
 INTAKE_MODEL = os.getenv("INTAKE_MODEL", "gemini-3.8-flash")  # 2.5 Flash is closed to new API keys
-INTAKE_TIMEOUT_S = float(os.getenv("INTAKE_TIMEOUT_S", "15"))  # Gemini rejects deadlines under 10 s
+INTAKE_TIMEOUT_S = float(os.getenv("INTAKE_TIMEOUT_S", "20"))  # per attempt; Gemini rejects deadlines under 10 s
+# How long the model "thinks" before answering. 3.8 Flash defaults to medium, which made intake time out (504).
+# Supported: low | medium | high ("minimal" is rejected by 3.8 Flash). Empty = model default.
+INTAKE_THINKING_LEVEL = os.getenv("INTAKE_THINKING_LEVEL", "low")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Uploads

@@ -2,7 +2,9 @@
 
 from typing import Protocol
 
-from config import DEMO_INTAKE_PATH, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, INTAKE_TIMEOUT_S
+from config import (
+    DEMO_INTAKE_PATH, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, INTAKE_THINKING_LEVEL, INTAKE_TIMEOUT_S,
+)
 from intake.prompt import SYSTEM_PROMPT
 
 
@@ -39,6 +41,10 @@ class GeminiProvider:
                 system_instruction=SYSTEM_PROMPT,
                 response_mime_type="application/json",
                 temperature=0.2,
+                # Short, structured task: little thinking keeps it to a few seconds.
+                thinking_config=(
+                    types.ThinkingConfig(thinking_level=INTAKE_THINKING_LEVEL.upper()) if INTAKE_THINKING_LEVEL else None
+                ),
             ),
         )
         return resp.text or ""
