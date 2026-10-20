@@ -61,14 +61,18 @@ export function RouteCard({ route }: { route: RouteResponse }) {
         </p>
       </div>
 
-      <div className="meter-row">
-        <div className="meter" aria-hidden="true">
-          <span style={{ width: `${surveyed}%` }} />
+      {/* Shown once the team has surveyed paths on this route; hidden while nothing is surveyed yet.
+          Unknown stretches stay dashed on the map either way. */}
+      {surveyed > 0 && (
+        <div className="meter-row">
+          <div className="meter" aria-hidden="true">
+            <span style={{ width: `${surveyed}%` }} />
+          </div>
+          <p className="meter-label">
+            <strong>{surveyed}%</strong> of this route checked in person. The rest is unknown (dashed on the map).
+          </p>
         </div>
-        <p className="meter-label">
-          <strong>{surveyed}%</strong> of this route checked in person. The rest is unknown (dashed on the map).
-        </p>
-      </div>
+      )}
 
       <Compare shortest={route.costs.shortest} recommended={rec} />
 
