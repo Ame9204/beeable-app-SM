@@ -1,0 +1,192 @@
+{
+ "meta": {
+  "built_at": "2026-10-20T03:24:44+00:00",
+  "source": "OpenStreetMap"
+ },
+ "places": [
+  {
+   "id": "osm-4",
+   "name": "Bahagian Hal Ehwal Pelajar & Alumni",
+   "type": "building",
+   "lat": 5.7086295,
+   "lng": 100.4503841,
+   "source": "imported"
+  },
+  {
+   "id": "osm-21",
+   "name": "Bahagian Keselamatan",
+   "type": "building",
+   "lat": 5.713186,
+   "lng": 100.4509169,
+   "source": "imported"
+  },
+  {
+   "id": "osm-8",
+   "name": "Bahagian Pengurusan Fasiliti",
+   "type": "building",
+   "lat": 5.7134491,
+   "lng": 100.449964,
+   "source": "imported"
+  },
+  {
+   "id": "osm-18",
+   "name": "Bangunan Akademik 1",
+   "type": "building",
+   "lat": 5.7117884,
+   "lng": 100.4490805,
+   "source": "imported"
+  },
+  {
+   "id": "osm-6",
+   "name": "Bangunan Akademik 2",
+   "type": "building",
+   "lat": 5.7103756,
+   "lng": 100.4488669,
+   "source": "imported"
+  },
+  {
+   "id": "osm-7",
+   "name": "Bangunan Akademik 3",
+   "type": "building",
+   "lat": 5.7111987,
+   "lng": 100.4484564,
+   "source": "imported"
+  },
+  {
+   "id": "osm-19",
+   "name": "Bangunan Pentadbiran",
+   "type": "building",
+   "lat": 5.7122011,
+   "lng": 100.4494957,
+   "source": "imported"
+  },
+  {
+   "id": "osm-10",
+   "name": "Bilik Kuliah",
+   "type": "building",
+   "lat": 5.7134747,
+   "lng": 100.4488531,
+   "source": "imported"
+  },
+  {
+   "id": "bus",
+   "name": "Depo Bas",
+   "type": "bus_stop",
+   "lat": 5.7131192808178195,
+   "lng": 100.4492427039137,
+   "source": "simulated"
+  },
+  {
+   "id": "osm-3",
+   "name": "Dewan Makan Malinja",
+   "type": "food",
+   "lat": 5.7095336,
+   "lng": 100.4498646,
+   "source": "imported"
+  },
+  {
+   "id": "osm-12",
+   "name": "Dewan Perdana",
+   "type": "building",
+   "lat": 5.7124088,
+   "lng": 100.4469637,
+   "source": "imported"
+  },
+  {
+   "id": "osm-16",
+   "name": "Jabatan Senireka Industri",
+   "type": "building",
+   "lat": 5.709221,
+   "lng": 100.4479786,
+   "source": "imported"
+  },
+  {
+   "id": "osm-9",
+   "name": "Kabin Tukang",
+   "type": "building",
+   "lat": 5.712933,
+   "lng": 100.4483639,
+   "source": "imported"
+  },
+  {
+   "id": "osm-5",
+   "name": "Kolej Mahsuri",
+   "type": "residence",
+   "lat": 5.7075745,
+   "lng": 100.4487734,
+   "source": "imported"
+  },
+  {
+   "id": "osm-1",
+   "name": "Kolej Malinja A",
+   "type": "residence",
+   "lat": 5.709793,
+   "lng": 100.4511367,
+   "source": "imported"
+  },
+  {
+   "id": "osm-2",
+   "name": "Kolej Malinja B",
+   "type": "residence",
+   "lat": 5.7101928,
+   "lng": 100.4507209,
+   "source": "imported"
+  },
+  {
+   "id": "osm-17",
+   "name": "Kosiswa",
+   "type": "food",
+   "lat": 5.7083663,
+   "lng": 100.4482844,
+   "source": "imported"
+  },
+  {
+   "id": "osm-22",
+   "name": "Mini Stadium",
+   "type": "sport",
+   "lat": 5.7081719,
+   "lng": 100.4519679,
+   "source": "imported"
+  },
+  {
+   "id": "osm-20",
+   "name": "Perpustakaan",
+   "type": "library",
+   "lat": 5.7112109,
+   "lng": 100.4496891,
+   "source": "imported"
+  },
+  {
+   "id": "surau",
+   "name": "Pusat Islam",
+   "type": "mosque_surau",
+   "lat": 5.710421138824264,
+   "lng": 100.44729553127485,
+   "source": "simulated"
+  },
+  {
+   "id": "osm-14",
+   "name": "Pusat Pelajar",
+   "type": "building",
+   "lat": 5.7124595,
+   "lng": 100.4484594,
+   "source": "imported"
+  },
+  {
+   "id": "osm-13",
+   "name": "Stor Pelupusan",
+   "type": "building",
+   "lat": 5.7127486,
+   "lng": 100.448098,
+   "source": "imported"
+  },
+  {
+   "id": "clinic",
+   "name": "Unit Kesihatan",
+   "type": "clinic",
+   "lat": 5.709855420465538,
+   "lng": 100.44663876053161,
+   "source": "simulated"
+  }
+ ]
+}

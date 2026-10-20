@@ -107,6 +107,8 @@ DEMO_PHOTO_PATH = DATA_DIR / "processed" / "demo_photo.jpg"
 DEMO_INTAKE_PATH = DATA_DIR / "processed" / "demo_intake.json"
 GRAPH_PATH = DATA_DIR / "processed" / "campus_walk.json"
 EDGE_OVERRIDES_PATH = DATA_DIR / "processed" / "edge_overrides.json"
+# Named campus places for the destination search (built by routing.build_places, bundled by the front end).
+PLACES_PATH = DATA_DIR / "processed" / "places.json"
 
 # Routing
 GRAPH_RADIUS_M = 700  # walk network downloaded around PRECINCT_CENTER

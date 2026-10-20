@@ -33,7 +33,16 @@ const GLYPH = {
   bus: "M5 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11H5Zm0-6h14M8 20v-3m8 3v-3",
   pin: "M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
 };
-const POI_GLYPH: Record<string, string> = { clinic: GLYPH.clinic, mosque_surau: GLYPH.mosque, bus_stop: GLYPH.bus };
+const POI_GLYPH: Record<string, string> = {
+  clinic: GLYPH.clinic,
+  mosque_surau: GLYPH.mosque,
+  bus_stop: GLYPH.bus,
+  library: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 16a2 2 0 0 1 2-2h13v2H6",
+  food: "M5 8h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5V8Zm11 1h2a2 2 0 0 1 0 4h-2",
+  residence: "M4 11 12 4l8 7v9H4v-9Zm6 9v-5h4v5",
+  sport: "M5 21V4m0 0h11l-2 4 2 4H5",
+  building: "M5 21V4h10v17M15 9h4v12M3 21h18",
+};
 
 // Barriers on either route get a hazard-striped warning marker with text in the popup, not just a colour.
 const BARRIER_ICON = divIcon({

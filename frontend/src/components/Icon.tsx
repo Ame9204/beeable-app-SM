@@ -38,6 +38,20 @@ const PATHS = {
   lowVision: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6v6Z",
   globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z",
   arrowLeft: "M19 12H5m6-6-6 6 6 6",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm5-2 5 5",
+  book: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Zm0 16a2 2 0 0 1 2-2h13v2H6",
+  cup: "M5 8h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5V8Zm11 1h2a2 2 0 0 1 0 4h-2M8 3v2m3-2v2",
+  home: "M4 11 12 4l8 7v9H4v-9Zm6 9v-5h4v5",
+  flag: "M5 21V4m0 0h11l-2 4 2 4H5",
+  building: "M5 21V4h10v17M15 9h4v12M8 8h4m-4 4h4m-4 4h4M3 21h18",
+  turnLeft: "M9 5 4 10l5 5M4 10h9a6 6 0 0 1 6 6v4",
+  turnRight: "m15 5 5 5-5 5m5-5h-9a6 6 0 0 0-6 6v4",
+  slightLeft: "M7 4v6h6M7 10l9 9",
+  slightRight: "M17 4v6h-6m6 0-9 9",
+  uturn: "M8 20V9a5 5 0 0 1 10 0v4m-4-3 4 4 4-4",
+  straight: "M12 20V4m-6 6 6-6 6 6",
+  volume: "M4 9h4l5-4v14l-5-4H4V9Zm12 0a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12",
+  mute: "M4 9h4l5-4v14l-5-4H4V9Zm12 1 5 5m0-5-5 5",
   download: "M12 4v11m-5-5 5 5 5-5M5 20h14",
   sparkle:"M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Zm7 12 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z",
   shield:"M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Zm-3 9 2 2 4-4",
@@ -75,7 +89,16 @@ export function Logo({ size = 30 }: { size?: number }) {
   );
 }
 
-export const POI_ICON: Record<string, IconName> = { clinic: "clinic", mosque_surau: "mosque", bus_stop: "bus" };
+export const POI_ICON: Record<string, IconName> = {
+  clinic: "clinic",
+  mosque_surau: "mosque",
+  bus_stop: "bus",
+  library: "book",
+  food: "cup",
+  residence: "home",
+  sport: "flag",
+  building: "building",
+};
 export const NEED_ICON = {
   wheelchair: "wheelchair",
   stroller: "stroller",

@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
+  // The destination list is built by the backend tools into ../data/processed/places.json and bundled here.
+  server: { fs: { allow: [".", "../data/processed"] } },
   plugins: [
     react(),
     VitePWA({

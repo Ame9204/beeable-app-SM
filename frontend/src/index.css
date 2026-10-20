@@ -846,3 +846,68 @@ button:not([class]), .primary { border-color: var(--ink); }
 .pop-title { display: block; font-weight: 700; font-size: 1rem; margin-bottom: 0.15rem; }
 .pop-cat { display: block; text-transform: capitalize; }
 .pop-note { display: block; margin-top: 0.25rem; font-weight: 700; color: var(--danger); }
+
+/* ---------- Destination search ---------- */
+.place-search { margin-top: 0.25rem; }
+.search-field { position: relative; display: flex; align-items: center; }
+.search-icon { position: absolute; left: 0.85rem; color: var(--ink); pointer-events: none; }
+.search-field input {
+  width: 100%; min-height: 54px; padding: 0.6rem 3rem 0.6rem 2.9rem;
+  border: 2px solid var(--ink); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 1.05rem;
+}
+.search-field input::-webkit-search-cancel-button { display: none; }
+.search-field input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: 0 0 0 6px var(--honey-soft); }
+.search-clear { position: absolute; right: 4px; }
+.suggestions { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.suggestions [role="group"] { display: grid; gap: 0.5rem; }
+.suggestions .list-heading { display: flex; align-items: center; gap: 0.3rem; margin: 0.25rem 0 0; }
+.suggestions .dest { display: flex; align-items: center; border-radius: var(--radius-sm); cursor: pointer; }
+.suggestions .dest-active { background: var(--honey-soft); border-color: var(--ink); }
+.no-results { margin: 0.25rem 0; }
+.start-journey { margin-bottom: 0.6rem; }
+
+/* ---------- Journey (turn-by-turn) ---------- */
+.journey .map-tools { display: none; }
+.journey-banner {
+  position: absolute; z-index: 1200; top: 10px; left: 10px; right: 10px;
+  padding: 0.75rem 1rem; border-radius: var(--radius); background: var(--ink); color: #fff;
+  border: 3px solid var(--honey); box-shadow: var(--shadow);
+}
+.jb-main { display: flex; align-items: center; gap: 0.85rem; }
+.jb-icon {
+  display: grid; place-items: center; width: 60px; height: 60px; flex: none;
+  border-radius: 14px; background: var(--honey); color: var(--ink);
+}
+.jb-dist { margin: 0; font-size: 2rem; font-weight: 700; line-height: 1; color: var(--honey); }
+.jb-text { margin: 0.15rem 0 0; font-size: 1.3rem; color: #fff; }
+.jb-text:focus { outline: none; }
+.jb-spinner { border-color: rgb(255 255 255 / 30%); border-top-color: var(--honey); width: 28px; height: 28px; }
+.jb-then {
+  display: flex; align-items: center; gap: 0.35rem; margin: 0.6rem 0 0; padding-top: 0.5rem;
+  border-top: 1px solid rgb(255 255 255 / 25%); font-weight: 700;
+}
+.journey-obstacle {
+  position: absolute; z-index: 1200; left: 10px; right: 10px; top: 150px; background: var(--honey-soft);
+  box-shadow: var(--shadow);
+}
+.journey-bottom {
+  position: absolute; z-index: 1200; left: 0; right: 0; bottom: 0;
+  padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-top: 3px solid var(--ink); border-radius: 20px 20px 0 0; box-shadow: var(--shadow-lg);
+}
+.journey-row { display: flex; align-items: center; gap: 0.6rem; }
+.journey-eta { flex: 1; margin: 0; display: grid; }
+.journey-eta strong { font-size: 1.6rem; line-height: 1.1; color: var(--ok); }
+.journey-eta span { color: var(--muted); font-weight: 700; }
+.journey-note { margin: 0 0 0.5rem; color: var(--ink); }
+.journey-arrived {
+  position: absolute; z-index: 1200; left: 12px; right: 12px; bottom: 12px;
+  display: grid; justify-items: center; gap: 0.35rem; text-align: center; padding: 1.25rem;
+  border: 3px solid var(--ink);
+}
+.journey-arrived h1 { margin: 0.25rem 0 0; }
+.journey-arrived .big { margin-top: 0.5rem; }
+@media (min-width: 900px) {
+  .journey-banner, .journey-obstacle { left: 16px; right: auto; width: 420px; }
+  .journey-bottom, .journey-arrived { left: 16px; right: auto; bottom: 16px; width: 420px; border-radius: 20px; border: 3px solid var(--ink); }
+}
