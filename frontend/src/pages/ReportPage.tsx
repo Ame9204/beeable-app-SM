@@ -4,7 +4,7 @@ import { api } from "../api";
 import { CATEGORIES } from "../config";
 import { useLocation } from "../hooks/useLocation";
 import { useT, type TKey } from "../i18n";
-import { takePhoto } from "../nativeCamera";
+import { pickPhoto } from "../nativeCamera";
 import { isNative } from "../platform";
 import type { AISuggestion, Analysis, Report } from "../types";
 import { Icon } from "../components/Icon";
@@ -275,10 +275,10 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  async function shoot() {
+  async function pick(source: "camera" | "gallery") {
     setError(null);
     try {
-      const file = await takePhoto();
+      const file = await pickPhoto(source);
       if (file) onPhoto(file);
     } catch {
       setError(t("report.cameraError"));
@@ -290,7 +290,7 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
       <div className="photo-chosen">
         <img src={preview} alt={t("report.previewAlt")} />
         <button type="button" className="secondary" onClick={() => onPhoto(null)}>
-          {t("report.retake")}
+          {t("report.change")}
         </button>
       </div>
     );
@@ -299,26 +299,42 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
   return (
     <>
       {isNative ? (
-        <button type="button" className="dropzone" onClick={shoot}>
-          <span className="dropzone-icon">
-            <Icon name="camera" size={34} />
-          </span>
-          {t("report.take")}
-        </button>
+        <div className="photo-actions">
+          <button type="button" className="dropzone" onClick={() => pick("camera")}>
+            <span className="dropzone-icon">
+              <Icon name="camera" size={34} />
+            </span>
+            {t("report.take")}
+          </button>
+          <button type="button" className="secondary" onClick={() => pick("gallery")}>
+            <Icon name="image" /> {t("report.gallery")}
+          </button>
+        </div>
       ) : (
-        <label className="dropzone">
-          <span className="dropzone-icon">
-            <Icon name="camera" size={34} />
-          </span>
-          {t("report.take")}
-          <input
-            className="visually-hidden"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        <div className="photo-actions">
+          <label className="dropzone">
+            <span className="dropzone-icon">
+              <Icon name="camera" size={34} />
+            </span>
+            {t("report.take")}
+            <input
+              className="visually-hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <label className="button secondary">
+            <Icon name="image" /> {t("report.gallery")}
+            <input
+              className="visually-hidden"
+              type="file"
+              accept="image/*"
+              onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
       )}
       <p className="hint">{t("report.photoHint")}</p>
       {error && (
