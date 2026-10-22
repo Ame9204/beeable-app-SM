@@ -30,3 +30,6 @@ Thumbs.db
 
 # OSMnx download cache (routing.build_graph)
 backend/cache/
+
+# IDE
+.idea/
