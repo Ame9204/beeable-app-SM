@@ -456,13 +456,12 @@ const S = {
     ms: "Jika jelas, AI akan mengesahkannya semasa anda menghantar. Jika tidak, staf akan menyemaknya.",
   },
   "report.cameraError": {
-    en: "Couldn't open the camera or gallery. Check the app's permissions in Settings.",
-    ms: "Kamera atau galeri tidak dapat dibuka. Semak kebenaran aplikasi dalam Tetapan.",
+    en: "Couldn't open the camera. Check the app's permissions in Settings.",
+    ms: "Kamera tidak dapat dibuka. Semak kebenaran aplikasi dalam Tetapan.",
   },
   "report.previewAlt": { en: "The photo you are about to send", ms: "Gambar yang akan anda hantar" },
-  "report.change": { en: "Change photo", ms: "Tukar gambar" },
+  "report.retake": { en: "Retake photo", ms: "Ambil semula gambar" },
   "report.take": { en: "Take a photo", ms: "Ambil gambar" },
-  "report.gallery": { en: "Choose from gallery", ms: "Pilih dari galeri" },
   "report.photoHint": {
     en: "A photo is often enough: the AI can describe it for you. Avoid faces and number plates.",
     ms: "Gambar biasanya sudah cukup: AI boleh menerangkannya untuk anda. Elakkan wajah dan nombor plat.",
