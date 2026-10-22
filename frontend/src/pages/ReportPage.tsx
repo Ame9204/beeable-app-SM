@@ -5,7 +5,7 @@ import { LOCATION_MESSAGE, useLocation } from "../hooks/useLocation";
 import { SPEECH_LANGS, useSpeechInput } from "../hooks/useSpeechInput";
 import { useAccount } from "../hooks/useAccount";
 import { speechLangFor } from "../account";
-import { pickPhoto } from "../nativeCamera";
+import { takePhoto } from "../nativeCamera";
 import { isNative } from "../platform";
 import type { Analysis, Report } from "../types";
 import { Icon } from "../components/Icon";
@@ -270,13 +270,13 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  async function pick(source: "camera" | "gallery") {
+  async function shoot() {
     setError(null);
     try {
-      const file = await pickPhoto(source);
+      const file = await takePhoto();
       if (file) onPhoto(file);
     } catch {
-      setError("Couldn't open the camera or gallery. Check the app's permissions in Settings.");
+      setError("Couldn't open the camera. Check the app's permissions in Settings.");
     }
   }
 
@@ -285,7 +285,7 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
       <div className="photo-chosen">
         <img src={preview} alt="The photo you are about to send" />
         <button type="button" className="secondary" onClick={() => onPhoto(null)}>
-          Change photo
+          Retake photo
         </button>
       </div>
     );
@@ -294,23 +294,18 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
   return (
     <>
       {isNative ? (
-        <div className="photo-actions">
-          <button type="button" className="dropzone" onClick={() => pick("camera")}>
-            <span className="dropzone-icon">
-              <Icon name="camera" size={34} />
-            </span>
-            Take a photo
-          </button>
-          <button type="button" className="secondary" onClick={() => pick("gallery")}>
-            <Icon name="image" /> Choose from gallery
-          </button>
-        </div>
+        <button type="button" className="dropzone" onClick={shoot}>
+          <span className="dropzone-icon">
+            <Icon name="camera" size={34} />
+          </span>
+          Take a photo
+        </button>
       ) : (
         <label className="dropzone">
           <span className="dropzone-icon">
             <Icon name="camera" size={34} />
           </span>
-          Take or choose a photo
+          Take a photo
           <input
             className="visually-hidden"
             type="file"
