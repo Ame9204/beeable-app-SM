@@ -125,7 +125,7 @@ export function ProfileSetup() {
               {t("setup.moveTitle")}
             </h1>
             <p className="muted">{t("setup.moveLead")}</p>
-            <ProfilePicker profile={mobility} onChange={setMobility} legend={t("setup.routeType")} lang={language} />
+            <ProfilePicker profile={mobility} onChange={setMobility} legend={t("setup.routeType")} lang={language} examples />
             <p className="hint">
               <Icon name="info" size={18} /> {t("setup.neverAccessible")}
             </p>

@@ -17,37 +17,37 @@ const line = (coords: LatLng[], props: SegmentProps) => ({
 
 const MOCK_TEXT = {
   en: {
-    steps: "steps with no ramp (verified)",
+    steps: "steps with no ramp",
     stepFree: [
-      "The shortest route has verified steps with no ramp, so it is avoided for step-free.",
-      "This route uses the ramp, adding about 90 m (about 2 min).",
-      "Part of this route has not been surveyed, so conditions there are unknown.",
+      "The shortest way (420 m) has steps with no ramp, so we take you around it.",
+      "This route is 510 m — 90 m longer, about 2 min more.",
+      "We haven't checked 38% of this route in person yet, so there might be things we don't know about.",
     ],
     easy: [
-      "The shortest route has steps, which add effort for easy walking.",
-      "This route is about 50 m longer but avoids the steps.",
-      "Part of this route has not been surveyed, so conditions there are unknown.",
+      "The shortest way (420 m) has steps with no ramp, so this route avoids it.",
+      "This route is 470 m — 50 m longer, about 1 min more.",
+      "We haven't checked 38% of this route in person yet, so there might be things we don't know about.",
     ],
     alt: [
-      "This alternative is 640 m — about 130 m longer than the BeeAble route, about 2 min more.",
-      "Part of this route has not been surveyed, so conditions there are unknown.",
+      "This way is 640 m — 130 m longer than the BeeAble route, about 2 min more.",
+      "We haven't checked this route in person yet, so there might be things we don't know about.",
     ],
   },
   ms: {
-    steps: "tangga tanpa ramp (disahkan)",
+    steps: "tangga tanpa ramp",
     stepFree: [
-      "Laluan terpendek ada tangga tanpa ramp yang disahkan, jadi ia dielakkan untuk profil tanpa tangga.",
-      "Laluan ini menggunakan ramp, menambah kira-kira 90 m (kira-kira 2 min).",
-      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+      "Laluan terpendek (420 m) ada tangga tanpa ramp, jadi kami bawa anda mengelaknya.",
+      "Laluan ini 510 m — 90 m lebih panjang, kira-kira 2 min lagi.",
+      "Kami belum menyemak 38% laluan ini secara langsung, jadi mungkin ada perkara yang kami belum tahu.",
     ],
     easy: [
-      "Laluan terpendek ada tangga, yang menyukarkan untuk profil jalan mudah.",
-      "Laluan ini kira-kira 50 m lebih panjang tetapi mengelak tangga.",
-      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+      "Laluan terpendek (420 m) ada tangga tanpa ramp, jadi laluan ini mengelaknya.",
+      "Laluan ini 470 m — 50 m lebih panjang, kira-kira 1 min lagi.",
+      "Kami belum menyemak 38% laluan ini secara langsung, jadi mungkin ada perkara yang kami belum tahu.",
     ],
     alt: [
-      "Laluan alternatif ini 640 m — kira-kira 130 m lebih panjang daripada laluan BeeAble, kira-kira 2 min lagi.",
-      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+      "Laluan ini 640 m — 130 m lebih panjang daripada laluan BeeAble, kira-kira 2 min lagi.",
+      "Kami belum menyemak laluan ini secara langsung, jadi mungkin ada perkara yang kami belum tahu.",
     ],
   },
 };

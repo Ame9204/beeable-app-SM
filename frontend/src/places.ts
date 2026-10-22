@@ -4,7 +4,8 @@ import data from "../../data/processed/places.json";
 import { distanceM } from "./hooks/useLocation";
 
 export type PlaceType =
-  | "clinic" | "mosque_surau" | "bus_stop" | "library" | "food" | "residence" | "sport" | "building";
+  | "clinic" | "mosque_surau" | "bus_stop" | "library" | "food" | "residence" | "sport" | "building"
+  | "pin"; // a spot the user tapped on the map
 
 export interface Place {
   id: string;
@@ -12,7 +13,7 @@ export interface Place {
   type: PlaceType;
   lat: number;
   lng: number;
-  source: "imported" | "simulated" | "surveyed";
+  source: "imported" | "simulated" | "surveyed" | "user"; // user = tapped on the map
 }
 
 export const PLACES = data.places as Place[];
@@ -29,6 +30,7 @@ const ALIASES: Record<PlaceType, string[]> = {
   residence: ["kolej", "college", "hostel", "dorm", "asrama"],
   sport: ["stadium", "sport", "sukan", "field", "padang"],
   building: ["building", "bangunan", "office", "pejabat"],
+  pin: [],
 };
 
 /** Shown as quick picks before the user types anything. */
@@ -91,3 +93,14 @@ export function rememberPlace(p: Place) {
 }
 
 export const findPlace = (id: string) => PLACES.find((p) => p.id === id);
+
+/** The named place closest to `at`, if one is within `maxM` metres (to name a tapped spot "Near …"). */
+export function nearestPlace(at: [number, number], maxM = 40): Place | undefined {
+  let best: Place | undefined;
+  let bestD = maxM;
+  for (const p of PLACES) {
+    const d = distanceM(at, [p.lat, p.lng]);
+    if (d <= bestD) [best, bestD] = [p, d];
+  }
+  return best;
+}

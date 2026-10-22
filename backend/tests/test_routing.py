@@ -94,8 +94,8 @@ def test_least_bad_route_names_the_barrier(campus):
     effects = {last: (ReportEffect("r-door", "steps_no_ramp", verified=True),)}
     r = campus.route(CENTER, CLINIC, "step_free", effects)
     assert r["costs"]["recommended"]["least_bad"] is True
-    assert r["costs"]["recommended"]["blocked_by"] == "steps with no ramp (verified)"
-    assert "least-bad" in r["explanation"][0]
+    assert r["costs"]["recommended"]["blocked_by"] == "steps with no ramp"
+    assert "best option" in r["explanation"][0] and "steps with no ramp" in r["explanation"][0]
 
 
 def test_explanation_numbers_match_costs(campus):
@@ -138,4 +138,13 @@ def test_route_text_in_malay(campus):
     r = campus.route(CENTER, CLINIC, "step_free", steps(), lang="ms")
     assert "tangga tanpa ramp" in r["explanation"][0]
     assert r["costs"]["shortest"].get("blocked_by") is None or "tangga" in r["costs"]["shortest"]["blocked_by"]
-    assert "BeeAble" in r["alternative"]["explanation"][0] and "Laluan alternatif" in r["alternative"]["explanation"][0]
+    assert "laluan BeeAble" in r["alternative"]["explanation"][0]
+
+
+def test_explanation_has_no_scores_or_penalties(campus):
+    for profile in ("step_free", "easy_walking"):
+        for lang in ("en", "ms"):
+            r = campus.route(CENTER, CLINIC, profile, steps(), lang=lang)
+            text = " ".join(r["explanation"] + (r["alternative"]["explanation"] if r["alternative"] else []))
+            for word in ("score", "skor", "penalty", "penalti", "+0.", "impassable"):
+                assert word not in text.lower(), (profile, lang, word, text)

@@ -10,6 +10,7 @@ export function ProfilePicker({
   compact = false,
   legend,
   lang,
+  examples = false,
 }: {
   profile: Profile;
   onChange: (p: Profile) => void;
@@ -17,6 +18,8 @@ export function ProfilePicker({
   legend?: string;
   /** Override the app language (the setup screen previews the language being picked). */
   lang?: Language;
+  /** "For example: …" under each option (profile setup; the map screen keeps it short). */
+  examples?: boolean;
 }) {
   const { t } = useT(lang);
   return (
@@ -31,7 +34,7 @@ export function ProfilePicker({
             </span>
             <span className="segment-label">{t(`profile.${p.id}.label`)}</span>
             {!compact && <span className="segment-hint">{t(`profile.${p.id}.hint`)}</span>}
-            {!compact && <span className="segment-example">{t(`profile.${p.id}.example`)}</span>}
+            {examples && <span className="segment-example">{t(`profile.${p.id}.example`)}</span>}
             <span className="segment-check">
               <Icon name="check" size={16} />
             </span>

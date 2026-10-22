@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AttributionControl, CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { AttributionControl, CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import { CATEGORIES } from "../config";
 import { divIcon, latLngBounds, type PathOptions } from "leaflet";
 import type { Feature, LineString } from "geojson";
@@ -15,7 +15,8 @@ export const SHORTEST_COLOR = "#6B6153";
 export const ALT_COLOR = "#6D28D9";
 const SHORTEST_STYLE: PathOptions = { color: SHORTEST_COLOR, weight: 4, opacity: 0.85, dashArray: "2 8", lineCap: "round" };
 // The route not chosen: dash-dot (its own pattern, not just its own colour), thick enough to tap.
-const ALT_STYLE: PathOptions = { color: ALT_COLOR, weight: 6, opacity: 0.8, dashArray: "14 6 2 6", lineCap: "round" };
+// It doesn't pass taps on to the map, so tapping it never also moves the destination.
+const ALT_STYLE: PathOptions = { color: ALT_COLOR, weight: 6, opacity: 0.8, dashArray: "14 6 2 6", lineCap: "round", bubblingMouseEvents: false };
 // White casing under the recommended route so it stands out on busy OSM tiles.
 const CASING_STYLE: PathOptions = { color: "#ffffff", weight: 11, opacity: 0.9, lineCap: "round" };
 
@@ -151,10 +152,17 @@ interface Props {
   routeKey?: string;
   /** Tapping the alternative line picks it (omitted during a journey). */
   onPickAlternative?: () => void;
+  /** Tapping the map anywhere else (not a marker or the alternative line), e.g. to choose a destination. */
+  onMapTap?: (at: [number, number]) => void;
+}
+
+function MapTap({ onTap }: { onTap: (at: [number, number]) => void }) {
+  useMapEvents({ click: (e) => onTap([e.latlng.lat, e.latlng.lng]) });
+  return null;
 }
 
 export function MapView({
-  route, reports, origin, destination, destinationType, focus, highlightId, routeKey = "route", onPickAlternative,
+  route, reports, origin, destination, destinationType, focus, highlightId, routeKey = "route", onPickAlternative, onMapTap,
 }: Props) {
   const { t } = useT();
   const statusText = (r: Report) =>
@@ -171,13 +179,14 @@ export function MapView({
       <AttributionControl position="topright" prefix={false} />
       <FitRoute route={route} routeKey={routeKey} />
       <FlyTo focus={focus} />
+      {onMapTap && <MapTap onTap={onMapTap} />}
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {route && (
         <>
-          <GeoJSON key={`s-${routeKey}`} data={route.shortest} style={SHORTEST_STYLE} />
+          <GeoJSON key={`s-${routeKey}`} data={route.shortest} style={SHORTEST_STYLE} interactive={false} />
           {route.alternative && (
             <GeoJSON
               key={`a-${routeKey}`}
@@ -190,8 +199,8 @@ export function MapView({
               {onPickAlternative && <Tooltip sticky>{t("map.altTitle")}</Tooltip>}
             </GeoJSON>
           )}
-          <GeoJSON key={`c-${routeKey}`} data={route.recommended} style={CASING_STYLE} />
-          <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} />
+          <GeoJSON key={`c-${routeKey}`} data={route.recommended} style={CASING_STYLE} interactive={false} />
+          <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} interactive={false} />
           {barrierSegments(route).map(([id, b]) => (
             <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={t("map.barrierTitle", { t: b.text })}>
               <Popup>

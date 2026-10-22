@@ -3,7 +3,8 @@
 import type { Profile } from "./types";
 
 export type Language = "ms" | "en";
-export type Need = "wheelchair" | "stroller" | "elderly" | "low_vision";
+// Low vision is not supported in this version (no audio-first navigation yet), so it is not offered.
+export type Need = "wheelchair" | "stroller" | "elderly";
 
 export interface Account {
   name: string;
@@ -32,11 +33,14 @@ export const LANGUAGES: { id: Language; label: string; speech: string }[] = [
 const isLanguage = (x: unknown): x is Language => x === "ms" || x === "en";
 
 // Same vocabulary as the AI intake `affects` field. Labels live in i18n.ts (need.<id>).
-export const NEEDS: Need[] = ["wheelchair", "stroller", "elderly", "low_vision"];
+export const NEEDS: Need[] = ["wheelchair", "stroller", "elderly"];
 
 const ACCOUNT_KEY = "beeable.account";
 const SESSION_KEY = "beeable.session";
+// The account's profile and a guest's profile are kept apart, so trying guest mode (and leaving it,
+// which clears the guest's) never wipes the account's: logging back in skips setup.
 const PROFILE_KEY = "beeable.userProfile";
+const GUEST_PROFILE_KEY = "beeable.guestProfile";
 // App language before a profile exists (welcome / log-in screens); the profile's language wins after that.
 const LANGUAGE_KEY = "beeable.language";
 // Read by NavigatePage to pick the default routing profile.
@@ -92,9 +96,18 @@ function readSnapshot(): AccountSnapshot {
   } catch {
     /* blocked */
   }
-  const stored = read<UserProfile>(PROFILE_KEY);
-  // Profiles saved before the app dropped 中文/தமிழ் fall back to English.
-  const profile = stored && { ...stored, language: isLanguage(stored.language) ? stored.language : "en" };
+  // Logged out: the account's profile still sets the language on the welcome screen.
+  // Guests from older versions kept theirs in PROFILE_KEY; use it while there is no account to own it.
+  const stored =
+    session === "guest"
+      ? read<UserProfile>(GUEST_PROFILE_KEY) ?? (account ? null : read<UserProfile>(PROFILE_KEY))
+      : read<UserProfile>(PROFILE_KEY);
+  // Profiles saved by older versions: 中文/தமிழ் fall back to English, and needs no longer offered are dropped.
+  const profile = stored && {
+    ...stored,
+    language: isLanguage(stored.language) ? stored.language : "en",
+    needs: (stored.needs ?? []).filter((n) => NEEDS.includes(n)),
+  };
   let saved: unknown = null;
   try {
     saved = localStorage.getItem(LANGUAGE_KEY);
@@ -188,18 +201,30 @@ export function continueAsGuest() {
 export function logOut() {
   write(SESSION_KEY, null);
   // A guest's profile isn't tied to anything, so clear it; an account's profile stays for next log-in.
-  if (snapshot.session === "guest") write(PROFILE_KEY, null);
+  if (snapshot.session === "guest") {
+    write(GUEST_PROFILE_KEY, null);
+    if (!snapshot.account) write(PROFILE_KEY, null); // an older version's guest profile
+  }
   refresh();
 }
 
-/** Switch the app language now (welcome screen); saving a profile sets it too. */
+/** Switch the app language now (welcome screen). A profile already on this phone (e.g. after logging out)
+ * would otherwise win over the choice, so it is updated too. Saving a profile sets the language as well. */
 export function setLanguage(language: Language) {
   write(LANGUAGE_KEY, language);
+  const key = profileKey();
+  const profile = read<UserProfile>(key);
+  if (profile) write(key, { ...profile, language });
   refresh();
+}
+
+/** Where the current profile lives: the guest's own while in guest mode, otherwise the account's. */
+function profileKey() {
+  return snapshot.session === "guest" ? GUEST_PROFILE_KEY : PROFILE_KEY;
 }
 
 export function saveProfile(profile: UserProfile) {
-  write(PROFILE_KEY, profile);
+  write(profileKey(), profile);
   write(LANGUAGE_KEY, profile.language);
   write(ROUTING_PROFILE_KEY, profile.mobility);
   refresh();

@@ -7,26 +7,27 @@ from dataclasses import dataclass
 
 from config import ROUTING_PENALTIES, VERIFIED_REPORT_PENALTY, DataSource, Language, Profile
 
+# What residents read (route explanation, map popups, "passes …"): plain words, no weights or jargon.
 LABELS = {
-    "verified_steps": "steps with no ramp (verified)",
-    "unverified_steps": "steps (not yet verified)",
-    "open_unverified_report": "an unverified barrier report",
-    "slope_5_8": "a 5–8% slope",
-    "slope_over_8": "a slope steeper than 8%",
-    "no_shade": "no shade",
-    "attribute_unknown": "conditions not yet surveyed",
-    "verified_kerb_barrier": "a high kerb or missing ramp (verified)",
-    "verified_other_barrier": "a verified barrier",
+    "verified_steps": "steps with no ramp",
+    "unverified_steps": "steps (not yet confirmed)",
+    "open_unverified_report": "a problem someone reported (not yet checked)",
+    "slope_5_8": "a fairly steep slope",
+    "slope_over_8": "a very steep slope",
+    "no_shade": "a stretch with no shade",
+    "attribute_unknown": "a stretch we haven't checked yet",
+    "verified_kerb_barrier": "a high kerb or missing ramp",
+    "verified_other_barrier": "a confirmed obstacle",
 }
 LABELS_MS = {
-    "verified_steps": "tangga tanpa ramp (disahkan)",
+    "verified_steps": "tangga tanpa ramp",
     "unverified_steps": "tangga (belum disahkan)",
-    "open_unverified_report": "laporan halangan yang belum disahkan",
-    "slope_5_8": "cerun 5–8%",
-    "slope_over_8": "cerun lebih curam daripada 8%",
-    "no_shade": "tiada teduhan",
-    "attribute_unknown": "keadaan yang belum ditinjau",
-    "verified_kerb_barrier": "kerb tinggi atau tiada ramp (disahkan)",
+    "open_unverified_report": "masalah yang dilaporkan (belum disemak)",
+    "slope_5_8": "cerun yang agak curam",
+    "slope_over_8": "cerun yang sangat curam",
+    "no_shade": "bahagian tanpa teduhan",
+    "attribute_unknown": "bahagian yang belum kami semak",
+    "verified_kerb_barrier": "kerb tinggi atau tiada ramp",
     "verified_other_barrier": "halangan yang disahkan",
 }
 

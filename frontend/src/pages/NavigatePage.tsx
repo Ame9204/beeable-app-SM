@@ -7,7 +7,7 @@ import { RouteLegend } from "../components/RouteLegend";
 import { JourneyMode } from "../components/JourneyMode";
 import { PlaceSearch } from "../components/PlaceSearch";
 import { useLocation } from "../hooks/useLocation";
-import { findPlace, rememberPlace, type Place } from "../places";
+import { findPlace, nearestPlace, rememberPlace, type Place } from "../places";
 import { useReports } from "../hooks/useReports";
 import { useRoute } from "../hooks/useRoute";
 import { useSheet } from "../hooks/useSheet";
@@ -30,12 +30,14 @@ function savedProfile(): Profile {
 export function NavigatePage() {
   const [profile, setProfileState] = useState<Profile>(savedProfile);
   const [destId, setDestId] = useState<string>("");
+  // A spot tapped on the map (destId "pin"), as opposed to a named place from the search.
+  const [pinned, setPinned] = useState<Place | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [focus, setFocus] = useState<MapFocus>();
   const [journey, setJourney] = useState(false);
   const [choice, setChoice] = useState<RouteChoice>("recommended");
   const { t, lang } = useT();
-  const dest = findPlace(destId);
+  const dest = destId === "pin" ? pinned : findPlace(destId);
   const to: [number, number] | null = dest ? [dest.lat, dest.lng] : null;
   const location = useLocation();
   const { route, loading, error, version } = useRoute(location.position, to, profile, lang);
@@ -59,11 +61,19 @@ export function NavigatePage() {
   }
 
   function chooseDestination(p: Place) {
-    rememberPlace(p);
+    if (p.type !== "pin") rememberPlace(p);
     setDestId(p.id);
     sheet.setSnap("half");
     // Ask for location the first time it's needed, not on app start.
     if (location.status !== "ok") location.locate();
+  }
+
+  function pickOnMap(at: [number, number]) {
+    const near = nearestPlace(at);
+    const name = near ? t("pin.near", { place: near.name }) : t("pin.name");
+    const pin: Place = { id: "pin", name, type: "pin", lat: at[0], lng: at[1], source: "user" };
+    setPinned(pin);
+    chooseDestination(pin);
   }
 
   async function locateMe() {
@@ -102,6 +112,7 @@ export function NavigatePage() {
         focus={focus}
         routeKey={`${version}-${choice}`}
         onPickAlternative={() => setChoice((c) => (c === "alternative" ? "recommended" : "alternative"))}
+        onMapTap={pickOnMap}
       />
 
       <div className="map-tools">
@@ -144,6 +155,10 @@ export function NavigatePage() {
             </h1>
             <ProfilePicker profile={profile} onChange={setProfile} />
             <PlaceSearch from={location.status === "ok" ? location.position : null} onPick={chooseDestination} />
+            {/* Pointer-only extra: the search above does the same with a keyboard or screen reader. */}
+            <p className="hint">
+              <Icon name="pin" size={18} /> {t("nav.tapHint")}
+            </p>
           </>
         ) : (
           <>
@@ -170,7 +185,8 @@ export function NavigatePage() {
               )}
               {error && (
                 <p className="notice notice-error" role="alert">
-                  {t("nav.couldNotLoad", { error })}
+                  {/* The server says this when a point is too far from the walk network. */}
+                  {error.includes("mapped path") ? t("nav.tooFar") : t("nav.couldNotLoad", { error })}
                 </p>
               )}
               {loading && (

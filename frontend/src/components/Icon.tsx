@@ -33,7 +33,6 @@ const PATHS = {
   eyeOff: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2",
   stroller: "M4 4h2l2 8h10a6 6 0 0 0-6-6V4m-6 8a6 6 0 0 0 6 4h6M9 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z",
   elderly: "M11 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm-1 3-2 6h3l-1 8m1-14 3 4 2 1m1-1v12",
-  lowVision: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6v6Z",
   globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z",
   arrowLeft: "M19 12H5m6-6-6 6 6 6",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm5-2 5 5",
@@ -97,6 +96,5 @@ export const NEED_ICON = {
   wheelchair: "wheelchair",
   stroller: "stroller",
   elderly: "elderly",
-  low_vision: "lowVision",
 } as const satisfies Record<string, IconName>;
 export const PROFILE_ICON ={ step_free: "wheelchair", easy_walking: "walk" } as const satisfies Record<string, IconName>;

@@ -170,8 +170,6 @@ const S = {
   "need.stroller.hint": { en: "Prams, carts, luggage", ms: "Kereta bayi, troli, bagasi" },
   "need.elderly.label": { en: "I tire easily on long walks", ms: "Saya cepat letih jika berjalan jauh" },
   "need.elderly.hint": { en: "Or need to rest along the way", ms: "Atau perlu berehat di sepanjang jalan" },
-  "need.low_vision.label": { en: "I have low vision", ms: "Saya rabun / kurang penglihatan" },
-  "need.low_vision.hint": { en: "Including partial sight", ms: "Termasuk penglihatan separa" },
 
   // --- navigate ---
   "nav.where": { en: "Where would you like to go?", ms: "Ke mana anda mahu pergi?" },
@@ -212,6 +210,14 @@ const S = {
   "place.residence": { en: "College / hostel", ms: "Kolej / asrama" },
   "place.sport": { en: "Sport", ms: "Sukan" },
   "place.building": { en: "Building", ms: "Bangunan" },
+  "place.pin": { en: "Spot on the map", ms: "Lokasi pada peta" },
+  "pin.name": { en: "Pinned spot", ms: "Lokasi pilihan" },
+  "pin.near": { en: "Near {place}", ms: "Berhampiran {place}" },
+  "nav.tapHint": { en: "Or tap the map to choose a spot.", ms: "Atau ketik pada peta untuk memilih lokasi." },
+  "nav.tooFar": {
+    en: "That spot is too far from any path we know. Tap closer to a path or building.",
+    ms: "Lokasi itu terlalu jauh dari mana-mana laluan yang kami tahu. Ketik lebih dekat dengan laluan atau bangunan.",
+  },
 
   // --- destination search ---
   "search.label": { en: "Search for a place", ms: "Cari tempat" },
