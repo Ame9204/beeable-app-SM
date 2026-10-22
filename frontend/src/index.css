@@ -71,6 +71,7 @@ main { flex: 1; min-height: 0; position: relative; overflow-y: auto; }
   border-bottom: 1px solid var(--line);
 }
 .brand { font-weight: 700; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+.logo { border-radius: 50%; background: #FFFBF0; flex: none; }
 
 .tabs-top { display: flex; gap: 0.35rem; }
 .tabs-top a {

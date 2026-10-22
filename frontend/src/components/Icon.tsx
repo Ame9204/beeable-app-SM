@@ -79,14 +79,10 @@ export function Icon({ name, size = 22, className }: { name: IconName; size?: nu
   );
 }
 
-/** BeeAble mark: honey hexagon with two "stripes". */
+/** BeeAble mark: bee with a wheelchair badge over a globe and dashed route (public/logo.png). */
 export function Logo({ size = 30 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <path d="M16 2l12 7v14l-12 7-12-7V9z" fill="#E9A10E" stroke="#1C1408" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M10 14h12M10 19h12" stroke="#1C1408" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
-  );
+  // Decorative: it always sits next to the visible "BeeAble" name.
+  return <img src="/logo.png" width={size} height={size} alt="" className="logo" />;
 }
 
 export const POI_ICON: Record<string, IconName> = {
