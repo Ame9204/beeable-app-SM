@@ -272,8 +272,8 @@ const S = {
     ms: "Laluan ini ada {n} halangan diketahui. Ketik penanda berjalur pada peta untuk melihatnya.",
   },
   "card.surveyed": {
-    en: "of this route checked in person. The rest is unknown (dashed on the map).",
-    ms: "daripada laluan ini telah disemak secara langsung. Selebihnya tidak diketahui (garis putus-putus pada peta).",
+    en: "of this route checked in person. The rest is unknown.",
+    ms: "daripada laluan ini telah disemak secara langsung. Selebihnya tidak diketahui.",
   },
   "card.alsoShortest": { en: "This is also the shortest route.", ms: "Ini juga laluan terpendek." },
   "card.shortest": { en: "Shortest route:", ms: "Laluan terpendek:" },
@@ -326,11 +326,7 @@ const S = {
 
   // --- map key ---
   "legend.aria": { en: "Map legend", ms: "Petunjuk peta" },
-  "legend.surveyed": { en: "BeeAble route (surveyed)", ms: "Laluan BeeAble (sudah ditinjau)" },
-  "legend.unsurveyed": {
-    en: "BeeAble route (not surveyed — unknown)",
-    ms: "Laluan BeeAble (belum ditinjau — tidak diketahui)",
-  },
+  "legend.beeable": { en: "BeeAble route", ms: "Laluan BeeAble" },
   "legend.alternative": { en: "Alternative route (tap to switch)", ms: "Laluan alternatif (ketik untuk tukar)" },
   "legend.shortest": { en: "Shortest route", ms: "Laluan terpendek" },
   "legend.obstacle": { en: "Obstacle on a route (tap for details)", ms: "Halangan pada laluan (ketik untuk butiran)" },

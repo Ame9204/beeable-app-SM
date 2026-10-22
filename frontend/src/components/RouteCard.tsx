@@ -71,7 +71,7 @@ export function RouteCard({
       </div>
 
       {/* Shown once the team has surveyed paths on this route; hidden while nothing is surveyed yet.
-          Unknown stretches stay dashed on the map either way. */}
+          This is the only place the checked share shows: the map draws the route as one solid line. */}
       {surveyed > 0 && (
         <div className="meter-row">
           <div className="meter" aria-hidden="true">

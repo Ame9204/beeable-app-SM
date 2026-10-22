@@ -9,22 +9,21 @@ import { useT, type TKey } from "../i18n";
 import type { Report, RouteResponse, SegmentProps } from "../types";
 import { BEE_SVG } from "./Bee";
 
-// Colours are paired with dash patterns + the text legend; never colour alone.
-export const ROUTE_COLOR = "#0F766E";
+// Colours are paired with line patterns + the text legend; never colour alone:
+// BeeAble route = thick solid green, alternative = grey dashes, shortest = thin grey dots.
+export const ROUTE_COLOR = "#15803D";
 export const SHORTEST_COLOR = "#6B6153";
-export const ALT_COLOR = "#6D28D9";
+export const ALT_COLOR = "#6B7280";
 const SHORTEST_STYLE: PathOptions = { color: SHORTEST_COLOR, weight: 4, opacity: 0.85, dashArray: "2 8", lineCap: "round" };
-// The route not chosen: dash-dot (its own pattern, not just its own colour), thick enough to tap.
+// The route not chosen: long dashes, thick enough to tap.
 // It doesn't pass taps on to the map, so tapping it never also moves the destination.
-const ALT_STYLE: PathOptions = { color: ALT_COLOR, weight: 6, opacity: 0.8, dashArray: "14 6 2 6", lineCap: "round", bubblingMouseEvents: false };
+const ALT_STYLE: PathOptions = { color: ALT_COLOR, weight: 6, opacity: 0.85, dashArray: "12 9", lineCap: "butt", bubblingMouseEvents: false };
 // White casing under the recommended route so it stands out on busy OSM tiles.
 const CASING_STYLE: PathOptions = { color: "#ffffff", weight: 11, opacity: 0.9, lineCap: "round" };
 
-function recommendedStyle(feature?: Feature<LineString, SegmentProps>): PathOptions {
-  const unknown = !feature?.properties.surveyed;
-  // Unknown segments render dashed — never treat unknown as safe.
-  return { color: ROUTE_COLOR, weight: 7, opacity: 0.95, lineCap: "round", dashArray: unknown ? "10 10" : undefined };
-}
+// One solid line (team decision, Oct 2026): unchecked stretches still cost more in routing, and the
+// route card says how much of the route has been checked in person.
+const RECOMMENDED_STYLE: PathOptions = { color: ROUTE_COLOR, weight: 7, opacity: 0.95, lineCap: "round" };
 
 const CATEGORY_KEYS = Object.fromEntries(CATEGORIES.map((c) => [`cat.${c.id}`, true]));
 
@@ -200,7 +199,7 @@ export function MapView({
             </GeoJSON>
           )}
           <GeoJSON key={`c-${routeKey}`} data={route.recommended} style={CASING_STYLE} interactive={false} />
-          <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} interactive={false} />
+          <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={RECOMMENDED_STYLE} interactive={false} />
           {barrierSegments(route).map(([id, b]) => (
             <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={t("map.barrierTitle", { t: b.text })}>
               <Popup>

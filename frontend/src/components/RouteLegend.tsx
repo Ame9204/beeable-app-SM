@@ -16,17 +16,11 @@ export function RouteLegend() {
           <line x1="2" y1="6" x2="34" y2="6" stroke="#fff" strokeWidth="11" strokeLinecap="round" />
           <line x1="2" y1="6" x2="34" y2="6" stroke={ROUTE_COLOR} strokeWidth="6" strokeLinecap="round" />
         </svg>
-        {t("legend.surveyed")}
+        {t("legend.beeable")}
       </li>
       <li>
         <svg width="36" height="12" aria-hidden="true">
-          <line x1="2" y1="6" x2="34" y2="6" stroke={ROUTE_COLOR} strokeWidth="6" strokeDasharray="8 6" />
-        </svg>
-        {t("legend.unsurveyed")}
-      </li>
-      <li>
-        <svg width="36" height="12" aria-hidden="true">
-          <line x1="2" y1="6" x2="34" y2="6" stroke={ALT_COLOR} strokeWidth="5" strokeDasharray="10 4 2 4" strokeLinecap="round" />
+          <line x1="2" y1="6" x2="34" y2="6" stroke={ALT_COLOR} strokeWidth="5" strokeDasharray="8 6" />
         </svg>
         {t("legend.alternative")}
       </li>
