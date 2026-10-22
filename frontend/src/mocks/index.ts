@@ -107,9 +107,10 @@ export function mockCreateReport({ analysis_id: _analysis, ...body }: ReportCrea
   const id = `r-${Math.random().toString(16).slice(2, 10)}`;
   const report: Report = {
     id, reference_number: `BEE-${id.slice(2).toUpperCase()}`, ...body,
-    original_text: body.text, language: "en", status: "unverified", edge_id: null, source: "reported",
+    // Mirrors the server: a clear, confident AI answer confirms the report without a staff step.
+    original_text: body.text, language: "en", status: "verified", verified_by: "ai", edge_id: null, source: "reported",
     ai_source: "simulated",
-    created_at: new Date().toISOString(), verified_at: null, resolved_at: null,
+    created_at: new Date().toISOString(), verified_at: new Date().toISOString(), resolved_at: null,
     ai: {
       is_accessibility_barrier: true, category: "damaged_kerb", severity: "medium",
       affects: ["wheelchair", "stroller"],
@@ -128,7 +129,8 @@ export function mockPatchReport(id: string, status: Exclude<ReportStatus, "unver
     r.id === id
       ? {
           ...r, status, ai: { ...r.ai, ...edits },
-          verified_at: status === "verified" ? now : r.verified_at, resolved_at: status === "resolved" ? now : r.resolved_at,
+          verified_at: status === "verified" ? now : r.verified_at,
+          verified_by: status === "verified" ? "staff" : r.verified_by, resolved_at: status === "resolved" ? now : r.resolved_at,
         }
       : r,
   );

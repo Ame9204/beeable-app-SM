@@ -18,6 +18,7 @@ from config import (
     UPLOAD_MAX_BYTES, Profile, ReportStatus,
 )
 from intake.images import process_image
+from intake.confirm import ai_confirms
 from intake.service import nearest_open, run_intake
 from priority.inputs import poi_proximity
 from priority.score import priority_score
@@ -197,10 +198,13 @@ def create_report(body: ReportCreate) -> Report:
         language=ai.language_detected,
         ai=ai,
         ai_source=ai_source,
-        status="unverified",  # AI output never verifies
+        status="unverified",
         edge_id=CAMPUS.nearest_edge(body.lat, body.lng)[0],
         created_at=datetime.now(timezone.utc),
     )
+    # No staff Verify step: the AI confirms clear barriers itself (labelled verified_by="ai").
+    if ai_confirms(ai, ai_source, find_similar(report, REPORTS.values())):
+        report = report.model_copy(update={"status": "verified", "verified_at": report.created_at, "verified_by": "ai"})
     REPORTS[rid] = report
     _persist()
     return _with_similar(report)
@@ -218,8 +222,9 @@ def update_report(report_id: str, body: ReportPatch) -> Report:
         raise HTTPException(404, "report not found")
     now = datetime.now(timezone.utc)
     updates: dict = {"status": body.status}
-    if body.status == "verified":
+    if body.status == "verified":  # staff reopening a rejected/resolved report
         updates["verified_at"] = now
+        updates["verified_by"] = "staff"
     elif body.status == "resolved":
         updates["resolved_at"] = now
     if body.edits:

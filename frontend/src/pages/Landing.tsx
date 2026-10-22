@@ -6,7 +6,7 @@ import { useFocusHeading } from "../hooks/useFocusHeading";
 const POINTS: { icon: IconName; title: string; text: string }[] = [
   { icon: "route", title: "Routes that fit you", text: "Step-free or easy walking, with a plain reason for every turn." },
   { icon: "camera", title: "Report a barrier in seconds", text: "Snap a photo, speak in BM, English, 中文 or தமிழ்." },
-  { icon: "check", title: "Staff verify and fix", text: "Fixed barriers update everyone's routes straight away." },
+  { icon: "check", title: "AI checks, staff fix", text: "Fixed barriers update everyone's routes straight away." },
 ];
 
 export function Landing() {

@@ -46,7 +46,7 @@ export function RouteLegend() {
         <span className="report-icon report-verified legend-icon" aria-hidden="true">
           <Icon name="alert" size={14} />
         </span>
-        Barrier confirmed by staff
+        Barrier confirmed (by AI or staff)
       </li>
       <li>
         <span className="report-icon report-in_progress legend-icon" aria-hidden="true">

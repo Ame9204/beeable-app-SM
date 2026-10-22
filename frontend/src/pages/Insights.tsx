@@ -15,7 +15,7 @@ const AI_SOURCE_LABEL: Record<AISource, string> = {
 
 const STATUS: Record<ReportStatus, { label: string; icon: IconName }> = {
   unverified: { label: "To review", icon: "question" },
-  verified: { label: "Verified", icon: "alert" },
+  verified: { label: "Confirmed", icon: "alert" },
   in_progress: { label: "Being fixed", icon: "wrench" },
   resolved: { label: "Resolved", icon: "check" },
   rejected: { label: "Rejected", icon: "x" },
@@ -154,8 +154,8 @@ export function Insights() {
   async function decide(r: Report, status: Exclude<ReportStatus, "unverified">, edits?: ReportEdits) {
     await api.patchReport(r.id, status, edits);
     await refresh();
-    // Demo step 4: a verified barrier jumps straight into the ranked list.
-    if (status === "verified" && r.status === "unverified") setTab("priorities");
+    // Work started on a report from the review queue: it is now ranked, so show it there.
+    if (status === "in_progress" && r.status === "unverified") setTab("priorities");
   }
 
   function onTabKey(e: KeyboardEvent) {
@@ -442,12 +442,12 @@ function ReportsTable({
 }
 
 function PrioritiesTable({ priorities, selectedId, onSelect }: { priorities: Priority[]; selectedId?: string; onSelect: (r: Report) => void }) {
-  if (priorities.length === 0) return <p className="empty">No verified barriers yet.</p>;
+  if (priorities.length === 0) return <p className="empty">No confirmed barriers yet.</p>;
   const max = priorities[0]?.score || 1;
   return (
     <div className="table-scroll">
       <table className="data-table">
-        <caption className="visually-hidden">Verified barriers ranked by priority score</caption>
+        <caption className="visually-hidden">Confirmed barriers ranked by priority score</caption>
         <thead>
           <tr>
             <th scope="col">Rank</th>
@@ -557,6 +557,7 @@ function ReportDetail({
       <div className="badges">
         <span className="badge">{AI_SOURCE_LABEL[r.ai_source]}</span>
         <span className="badge">Confidence: {r.ai.confidence}</span>
+        {r.verified_by === "ai" && r.status === "verified" && <span className="badge">Confirmed by AI, not checked by staff</span>}
         {r.ai.affects.length > 0 && <span className="badge">Affects: {r.ai.affects.join(", ").replaceAll("_", " ")}</span>}
         {f.map((x) => (
           <span key={x} className="flag"><Icon name="alert" size={14} /> {x}</span>
@@ -591,7 +592,8 @@ function ReportDetail({
       <div className="actions">
         {r.status === "unverified" && (
           <>
-            <button type="button" onClick={() => act("verified")} disabled={busy}><Icon name="check" size={18} /> Verify</button>
+            {/* No Verify step: the AI confirms clear barriers itself. Staff start work on, or reject, the rest. */}
+            <button type="button" onClick={() => act("in_progress")} disabled={busy}><Icon name="wrench" size={18} /> Start work</button>
             <button type="button" className="secondary" onClick={() => act("rejected")} disabled={busy}><Icon name="x" size={18} /> Reject</button>
           </>
         )}
@@ -670,7 +672,7 @@ function ReportDetail({
       <h3>History</h3>
       <ol className="history">
         <li><strong>Reported</strong> {fullDate(r.created_at)}</li>
-        {r.verified_at && <li><strong>Verified</strong> {fullDate(r.verified_at)}</li>}
+        {r.verified_at && <li><strong>{r.verified_by === "ai" ? "Confirmed by AI" : "Confirmed"}</strong> {fullDate(r.verified_at)}</li>}
         {r.resolved_at && <li><strong>Resolved</strong> {fullDate(r.resolved_at)}</li>}
       </ol>
       <p className="muted small-text">

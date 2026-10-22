@@ -104,7 +104,7 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
     <form onSubmit={submit} aria-labelledby="report-heading" className="report">
       <header className="page-header">
         <h1 id="report-heading">Report a barrier</h1>
-        <p>Snap a photo of the steps, broken kerb or blocked path. Our AI describes it for you, and staff check it.</p>
+        <p>Snap a photo of the steps, broken kerb or blocked path. Our AI describes and checks it, and staff fix it.</p>
       </header>
 
       <ol className="stepper" aria-label="Progress">
@@ -253,7 +253,7 @@ function AnalysisCard({ analysis, stale }: { analysis: Analysis; stale: boolean 
       )}
       <p className="hint">
         <Icon name="info" size={16} />{" "}
-        {stale ? "You added details, so the AI will read them too when you send." : "Staff confirm or correct this."}
+        {stale ? "You added details, so the AI will read them too when you send." : "If it's clear, the AI confirms it when you send. Otherwise staff check it."}
       </p>
     </div>
   );
@@ -394,6 +394,7 @@ function Describe({
 
 function Submitted({ report, onAnother }: { report: Report; onAnother: () => void }) {
   const fallback = report.ai_source === "fallback";
+  const confirmed = report.status === "verified";
   const [copied, setCopied] = useState(false);
 
   async function copyRef() {
@@ -428,13 +429,21 @@ function Submitted({ report, onAnother }: { report: Report; onAnother: () => voi
             <Icon name="check" size={16} />
           </span>
           <span>
-            <strong>Sent</strong> — shown as <em>Unverified</em> on the map
+            {confirmed ? (
+              <><strong>Sent and confirmed by the AI</strong> — routes now avoid it</>
+            ) : (
+              <><strong>Sent</strong> — shown as <em>Unverified</em> on the map</>
+            )}
           </span>
         </li>
         <li>
           <span className="tl-dot">2</span>
           <span>
-            <strong>Staff check it</strong> and confirm or correct the details
+            {confirmed ? (
+              <><strong>Staff fix it</strong> or correct it if the AI got it wrong</>
+            ) : (
+              <><strong>Staff check it</strong> and confirm or correct the details</>
+            )}
           </span>
         </li>
         <li>
@@ -457,7 +466,8 @@ function Submitted({ report, onAnother }: { report: Report; onAnother: () => voi
             </p>
             <p>{report.ai.summary_en}</p>
             <p className="hint">
-              <Icon name="info" size={16} /> This is an AI suggestion. Staff confirm or correct it.
+              <Icon name="info" size={16} />{" "}
+              {confirmed ? "The AI confirmed this. Staff can still correct it." : "This is an AI suggestion. Staff confirm or correct it."}
             </p>
           </>
         )}

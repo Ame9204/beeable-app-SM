@@ -68,6 +68,7 @@ class Report(BaseModel):
     source: Literal["reported", "simulated"] = "reported"
     created_at: datetime
     verified_at: datetime | None = None
+    verified_by: Literal["ai", "staff"] | None = None  # who confirmed it (data-honesty label)
     resolved_at: datetime | None = None
     # Computed when the report is returned; not stored.
     similar: list[SimilarReport] = []

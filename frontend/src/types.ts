@@ -79,6 +79,8 @@ export interface Report {
   source: "reported" | "simulated";
   created_at: string;
   verified_at: string | null;
+  /** Who confirmed it: the AI on intake, or staff reopening it. Absent in older/sample data. */
+  verified_by?: "ai" | "staff" | null;
   resolved_at: string | null;
   /** Computed by the server; absent in sample data. */
   similar?: SimilarReport[];

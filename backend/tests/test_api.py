@@ -145,8 +145,21 @@ def test_analyse_then_send_reuses_the_answer(monkeypatch):
     # photo only, no text: allowed, and the model is not called a second time
     r = client.post("/reports", json={"photo_url": url, "lat": 5.7141, "lng": 100.4504, "analysis_id": a["analysis_id"]})
     assert r.status_code == 201
-    assert r.json()["ai"]["category"] == "damaged_kerb" and r.json()["status"] == "unverified"
+    assert r.json()["ai"]["category"] == "damaged_kerb"
     assert len(calls) == 1
+    # a clear, confident live answer: the AI confirms it and it is ranked straight away
+    assert r.json()["status"] == "verified" and r.json()["verified_by"] == "ai"
+    assert r.json()["id"] in [x["report"]["id"] for x in client.get("/priorities").json()]
+
+
+def test_doubtful_ai_answer_stays_for_staff(monkeypatch):
+    import main
+    from intake.service import fallback_suggestion
+
+    low = fallback_suggestion("").model_copy(update={"category": "damaged_kerb", "confidence": "low"})
+    monkeypatch.setattr(main, "run_intake", lambda **kw: (low, "live"))
+    r = client.post("/reports", json={"text": "Kerb rosak?", "lat": 5.7101, "lng": 100.4461}).json()
+    assert r["status"] == "unverified" and r["verified_by"] is None
 
 
 def test_analysis_not_reused_when_text_changes(monkeypatch):

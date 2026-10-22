@@ -208,7 +208,11 @@ export function MapView({ route, reports, origin, destination, destinationType, 
             <Popup>
               <span className="pop-title">{REPORT_HEADLINE[r.status] ?? "Reported barrier"}</span>
               <strong className="pop-cat">{r.ai.category.replaceAll("_", " ")}</strong>
-              Status: {r.status === "unverified" ? "Unverified (not yet checked by staff)" : r.status.replace("_", " ")}
+              Status: {r.status === "unverified"
+                ? "Unverified (not yet checked by staff)"
+                : r.status === "verified"
+                  ? (r.verified_by === "ai" ? "Confirmed by AI" : "Confirmed")
+                  : r.status.replace("_", " ")}
               <br />
               Source: {r.source}
             </Popup>

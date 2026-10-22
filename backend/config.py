@@ -127,3 +127,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Uploads
 UPLOAD_MAX_PX = 1024
 UPLOAD_MAX_BYTES = 10 * 1024 * 1024
+
+# The AI confirms a new report itself (no staff Verify step; supervisor decision, Oct 2026) only when
+# it is a clear barrier: one of these confidences, no privacy flag, and no possible duplicate.
+# Anything else stays "unverified" in the staff review queue.
+AI_CONFIRM_CONFIDENCE = ("medium", "high")
