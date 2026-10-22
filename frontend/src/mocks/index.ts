@@ -5,6 +5,8 @@ import type {
   SegmentProps,
 } from "../types";
 
+import type { Language } from "../account";
+
 type LatLng = [number, number];
 
 const line = (coords: LatLng[], props: SegmentProps) => ({
@@ -13,17 +15,56 @@ const line = (coords: LatLng[], props: SegmentProps) => ({
   properties: props,
 });
 
-export function mockRoute(from: LatLng, to: LatLng, profile: Profile): RouteResponse {
+const MOCK_TEXT = {
+  en: {
+    steps: "steps with no ramp (verified)",
+    stepFree: [
+      "The shortest route has verified steps with no ramp, so it is avoided for step-free.",
+      "This route uses the ramp, adding about 90 m (about 2 min).",
+      "Part of this route has not been surveyed, so conditions there are unknown.",
+    ],
+    easy: [
+      "The shortest route has steps, which add effort for easy walking.",
+      "This route is about 50 m longer but avoids the steps.",
+      "Part of this route has not been surveyed, so conditions there are unknown.",
+    ],
+    alt: [
+      "This alternative is 640 m — about 130 m longer than the BeeAble route, about 2 min more.",
+      "Part of this route has not been surveyed, so conditions there are unknown.",
+    ],
+  },
+  ms: {
+    steps: "tangga tanpa ramp (disahkan)",
+    stepFree: [
+      "Laluan terpendek ada tangga tanpa ramp yang disahkan, jadi ia dielakkan untuk profil tanpa tangga.",
+      "Laluan ini menggunakan ramp, menambah kira-kira 90 m (kira-kira 2 min).",
+      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+    ],
+    easy: [
+      "Laluan terpendek ada tangga, yang menyukarkan untuk profil jalan mudah.",
+      "Laluan ini kira-kira 50 m lebih panjang tetapi mengelak tangga.",
+      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+    ],
+    alt: [
+      "Laluan alternatif ini 640 m — kira-kira 130 m lebih panjang daripada laluan BeeAble, kira-kira 2 min lagi.",
+      "Sebahagian laluan ini belum ditinjau, jadi keadaannya tidak diketahui.",
+    ],
+  },
+};
+
+export function mockRoute(from: LatLng, to: LatLng, profile: Profile, lang: Language = "en"): RouteResponse {
   const mid: LatLng = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
   const off = profile === "step_free" ? 0.0015 : 0.0008;
   const detour: LatLng = [mid[0] + off, mid[1] - off];
+  const other: LatLng = [mid[0] - off, mid[1] + off];
   const stepFree = profile === "step_free";
+  const text = MOCK_TEXT[lang];
   return {
     shortest: {
       type: "FeatureCollection",
       features: [
         line([from, mid], { edge_id: "e1", source: "surveyed", surveyed: true }),
-        line([mid, to], { edge_id: "e2", source: "surveyed", surveyed: true, barrier: "steps_no_ramp", barrier_verified: true }),
+        line([mid, to], { edge_id: "e2", source: "surveyed", surveyed: true, barrier: text.steps, barrier_verified: true }),
       ],
     },
     recommended: {
@@ -34,20 +75,22 @@ export function mockRoute(from: LatLng, to: LatLng, profile: Profile): RouteResp
       ],
     },
     costs: stepFree
-      ? { shortest: { length_m: 420, cost: null, blocked_by: "verified steps on e2" }, recommended: { length_m: 510, cost: 637.5 } }
+      ? { shortest: { length_m: 420, cost: null, blocked_by: text.steps }, recommended: { length_m: 510, cost: 637.5 } }
       : { shortest: { length_m: 420, cost: 1260 }, recommended: { length_m: 470, cost: 587.5 } },
-    explanation: stepFree
-      ? [
-          "The shortest route has verified steps with no ramp, so it is avoided for step-free.",
-          "This route uses the ramp, adding about 90 m (about 2 min).",
-          "Part of this route has not been surveyed, so conditions there are unknown.",
-        ]
-      : [
-          "The shortest route has steps, which add effort for easy walking.",
-          "This route is about 50 m longer but avoids the steps.",
-          "Part of this route has not been surveyed, so conditions there are unknown.",
-        ],
+    explanation: stepFree ? text.stepFree : text.easy,
     surveyed_share: 0.62,
+    alternative: {
+      route: {
+        type: "FeatureCollection",
+        features: [
+          line([from, other], { edge_id: "e5", source: "imported", surveyed: false }),
+          line([other, to], { edge_id: "e6", source: "imported", surveyed: false }),
+        ],
+      },
+      costs: { length_m: 640, cost: 960, known_barriers: 0 },
+      explanation: text.alt,
+      surveyed_share: 0,
+    },
   };
 }
 
@@ -74,6 +117,17 @@ let reports: Report[] = [
       affects: ["wheelchair", "low_vision"], summary_en: "Several loose paving tiles beside the Depo Bas shelter.",
       language_detected: "en", possible_duplicate_of: null, privacy_flag: false, confidence: "medium",
       reason: "Uneven tiles visible; extent unclear.",
+    },
+  },
+  {
+    id: "r-003", reference_number: "BEE-003", lat: 5.7112, lng: 100.4478, photo_url: null,
+    original_text: "Bangku baru depan Pusat Islam", language: "ms", status: "rejected", rejected_by: "ai", edge_id: null,
+    source: "simulated", ai_source: "simulated", created_at: daysAgo(1), verified_at: null, resolved_at: null,
+    ai: {
+      is_accessibility_barrier: false, category: "not_a_barrier", severity: "low",
+      affects: [], summary_en: "A new bench beside the path; the path itself is clear.",
+      language_detected: "ms", possible_duplicate_of: null, privacy_flag: false, confidence: "high",
+      reason: "Bench is off the walking line; nothing blocks the path.",
     },
   },
 ];
@@ -123,14 +177,21 @@ export function mockCreateReport({ analysis_id: _analysis, ...body }: ReportCrea
   return report;
 }
 
+/** Like the server: staff accepting a report makes it a barrier, even if the AI said otherwise. */
+function acceptedAi(ai: Report["ai"], status: ReportStatus): Report["ai"] {
+  if (status !== "verified" || (ai.is_accessibility_barrier && ai.category !== "not_a_barrier")) return ai;
+  return { ...ai, is_accessibility_barrier: true, category: ai.category === "not_a_barrier" ? "other" : ai.category };
+}
+
 export function mockPatchReport(id: string, status: Exclude<ReportStatus, "unverified">, edits?: ReportEdits): Report {
   const now = new Date().toISOString();
   reports = reports.map((r) =>
     r.id === id
       ? {
-          ...r, status, ai: { ...r.ai, ...edits },
+          ...r, status, ai: acceptedAi({ ...r.ai, ...edits }, status),
           verified_at: status === "verified" ? now : r.verified_at,
-          verified_by: status === "verified" ? "staff" : r.verified_by, resolved_at: status === "resolved" ? now : r.resolved_at,
+          verified_by: status === "verified" ? "staff" : r.verified_by,
+          rejected_by: status === "rejected" ? "staff" : r.rejected_by, resolved_at: status === "resolved" ? now : r.resolved_at,
         }
       : r,
   );

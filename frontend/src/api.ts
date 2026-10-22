@@ -1,6 +1,7 @@
 // API client. Falls back to in-browser mocks when the backend is unreachable or USE_MOCKS is set.
 import { API_URL, USE_MOCKS } from "./config";
 import * as mocks from "./mocks";
+import type { Language } from "./account";
 import type {
   AnalyseRequest, Analysis, Priority, Profile, Report, ReportCreate, ReportEdits, ReportStatus, RouteResponse,
 } from "./types";
@@ -30,11 +31,12 @@ async function request<T>(path: string, init: RequestInit | undefined, fallback:
 }
 
 export const api = {
-  route: (from: [number, number], to: [number, number], profile: Profile) =>
+  /** `lang` picks the language of the explanation and barrier text. */
+  route: (from: [number, number], to: [number, number], profile: Profile, lang: Language = "en") =>
     request<RouteResponse>(
-      `/route?from=${from.join(",")}&to=${to.join(",")}&profile=${profile}`,
+      `/route?from=${from.join(",")}&to=${to.join(",")}&profile=${profile}&lang=${lang}`,
       undefined,
-      () => mocks.mockRoute(from, to, profile),
+      () => mocks.mockRoute(from, to, profile, lang),
     ),
 
   listReports: (status?: ReportStatus) =>

@@ -1,5 +1,7 @@
 // Turn-by-turn guidance worked out from the recommended route's geometry (pure functions, no I/O).
 // The route's features come from the server in walking order and orientation (backend/routing/router.py).
+import type { Language } from "./account";
+import { translate } from "./i18n";
 import type { RouteGeoJSON } from "./types";
 
 export type LatLng = [number, number];
@@ -149,19 +151,8 @@ export function locateOnPath(points: PathPoint[], pos: LatLng, minAlong = 0): { 
   return best;
 }
 
-const TURN_TEXT: Record<ManeuverKind, string> = {
-  slight_left: "Bear left",
-  left: "Turn left",
-  sharp_left: "Sharp left",
-  slight_right: "Bear right",
-  right: "Turn right",
-  sharp_right: "Sharp right",
-  uturn: "Turn around",
-  arrive: "Arrive",
-};
-
-export function maneuverText(m: Maneuver, destination: string): string {
-  return m.kind === "arrive" ? `Arrive at ${destination}` : TURN_TEXT[m.kind];
+export function maneuverText(m: Maneuver, destination: string, lang: Language = "en"): string {
+  return translate(lang, `turn.${m.kind}`, { dest: destination });
 }
 
 /** "40 m", "120 m", "1.2 km": rounded the way people say it. */
@@ -171,7 +162,9 @@ export function formatDistance(m: number): string {
   return `${Math.max(5, Math.round(m / 5) * 5)} m`;
 }
 
-/** Same, for speech ("40 metres"). */
-export function spokenDistance(m: number): string {
-  return formatDistance(m).replace(" km", " kilometres").replace(" m", " metres");
+/** Same, for speech ("40 metres" / "40 meter"). */
+export function spokenDistance(m: number, lang: Language = "en"): string {
+  return formatDistance(m)
+    .replace(" km", ` ${translate(lang, "unit.kilometres")}`)
+    .replace(" m", ` ${translate(lang, "unit.metres")}`);
 }

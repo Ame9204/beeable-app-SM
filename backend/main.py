@@ -15,10 +15,10 @@ import mock_data
 import store
 from config import (
     CORS_ORIGIN_REGEX, CORS_ORIGINS, GEMINI_API_KEY, INTAKE_MODEL, INTAKE_PROVIDER, SEVERITY_SCORE, STORE_PATH, UPLOAD_DIR,
-    UPLOAD_MAX_BYTES, Profile, ReportStatus,
+    UPLOAD_MAX_BYTES, Language, Profile, ReportStatus,
 )
 from intake.images import process_image
-from intake.confirm import ai_confirms
+from intake.confirm import ai_confirms, ai_rejects
 from intake.service import nearest_open, run_intake
 from priority.inputs import poi_proximity
 from priority.score import priority_score
@@ -115,9 +115,10 @@ def get_route(
     from_: str = Query(..., alias="from", description="lat,lng"),
     to: str = Query(..., description="lat,lng"),
     profile: Profile = "step_free",
+    lang: Language = "en",
 ) -> dict:
     try:
-        return CAMPUS.route(_parse_latlng(from_, "from"), _parse_latlng(to, "to"), profile, _report_effects())
+        return CAMPUS.route(_parse_latlng(from_, "from"), _parse_latlng(to, "to"), profile, _report_effects(), lang)
     except OffNetworkError as exc:
         raise HTTPException(422, str(exc))
 
@@ -203,7 +204,10 @@ def create_report(body: ReportCreate) -> Report:
         created_at=datetime.now(timezone.utc),
     )
     # No staff Verify step: the AI confirms clear barriers itself (labelled verified_by="ai").
-    if ai_confirms(ai, ai_source, find_similar(report, REPORTS.values())):
+    # Non-barriers are auto-rejected (rejected_by="ai"); staff can re-accept them from /insights.
+    if ai_rejects(ai, ai_source):
+        report = report.model_copy(update={"status": "rejected", "rejected_by": "ai"})
+    elif ai_confirms(ai, ai_source, find_similar(report, REPORTS.values())):
         report = report.model_copy(update={"status": "verified", "verified_at": report.created_at, "verified_by": "ai"})
     REPORTS[rid] = report
     _persist()
@@ -222,9 +226,11 @@ def update_report(report_id: str, body: ReportPatch) -> Report:
         raise HTTPException(404, "report not found")
     now = datetime.now(timezone.utc)
     updates: dict = {"status": body.status}
-    if body.status == "verified":  # staff reopening a rejected/resolved report
+    if body.status == "verified":  # staff reopening, or re-accepting an auto-rejected report
         updates["verified_at"] = now
         updates["verified_by"] = "staff"
+    elif body.status == "rejected":
+        updates["rejected_by"] = "staff"
     elif body.status == "resolved":
         updates["resolved_at"] = now
     if body.edits:
@@ -232,6 +238,12 @@ def update_report(report_id: str, body: ReportPatch) -> Report:
             updates["ai"] = AISuggestion.model_validate({**report.ai.model_dump(), **body.edits})
         except ValidationError as exc:
             raise HTTPException(422, f"invalid edits: {exc.errors()[0]['msg']}")
+    if body.status == "verified":
+        # Staff accepting it means it is a barrier, even if the AI said otherwise.
+        ai = updates.get("ai", report.ai)
+        if not ai.is_accessibility_barrier or ai.category == "not_a_barrier":
+            category = "other" if ai.category == "not_a_barrier" else ai.category
+            updates["ai"] = ai.model_copy(update={"is_accessibility_barrier": True, "category": category})
     DECISIONS.append({
         "report_id": report_id,
         "ai": report.ai.model_dump(),

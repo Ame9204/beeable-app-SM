@@ -41,6 +41,9 @@ function flags(r: Report): string[] {
   return out;
 }
 
+/** The AI said "not a barrier" and closed it; staff can re-accept it. */
+const isAutoRejected = (r: Report) => r.status === "rejected" && r.rejected_by === "ai";
+
 const isDuplicateFlag = (f: string) => f === "Possible duplicate" || f.startsWith("Likely same as");
 
 function timeAgo(iso: string | Date, now = Date.now()): string {
@@ -62,7 +65,7 @@ const TAB_IDS: Tab[] = ["reports", "priorities"];
 
 interface Filters {
   q: string;
-  status: ReportStatus | "open" | "all";
+  status: ReportStatus | "open" | "all" | "auto_rejected";
   category: string;
   severity: string;
   flaggedOnly: boolean;
@@ -108,7 +111,9 @@ export function Insights() {
   const rows = useMemo(() => {
     const q = filters.q.trim().toLowerCase();
     const list = reports.filter((r) => {
-      if (filters.status === "open" ? r.status === "rejected" || r.status === "resolved" : filters.status !== "all" && r.status !== filters.status)
+      if (filters.status === "auto_rejected") {
+        if (!isAutoRejected(r)) return false;
+      } else if (filters.status === "open" ? r.status === "rejected" || r.status === "resolved" : filters.status !== "all" && r.status !== filters.status)
         return false;
       if (filters.category && r.ai.category !== filters.category) return false;
       if (filters.severity && r.ai.severity !== filters.severity) return false;
@@ -231,6 +236,21 @@ export function Insights() {
               </button>
             </li>
           ))}
+          <li>
+            <button
+              type="button"
+              className="tile tile-auto_rejected"
+              aria-pressed={filters.status === "auto_rejected"}
+              onClick={() => {
+                setTab("reports");
+                setFilters((f) => ({ ...f, status: f.status === "auto_rejected" ? "open" : "auto_rejected" }));
+              }}
+            >
+              <Icon name="x" size={18} />
+              <span className="tile-num">{reports.filter(isAutoRejected).length}</span>
+              <span className="tile-label">Auto-rejected</span>
+            </button>
+          </li>
         </ul>
 
         <div className="tabs" role="tablist" aria-label="Dashboard sections" onKeyDown={onTabKey}>
@@ -254,6 +274,7 @@ export function Insights() {
                 <select id="f-status" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value as Filters["status"] })}>
                   <option value="open">Open (not closed)</option>
                   <option value="all">All</option>
+                  <option value="auto_rejected">Auto-rejected by AI</option>
                   {STATUS_ORDER.map((s) => (
                     <option key={s} value={s}>{STATUS[s].label}</option>
                   ))}
@@ -349,10 +370,10 @@ function SortHeader({ k, label, sort, setSort }: { k: SortKey; label: string; so
   );
 }
 
-function StatusPill({ status }: { status: ReportStatus }) {
+function StatusPill({ status, auto = false }: { status: ReportStatus; auto?: boolean }) {
   return (
     <span className={`status-pill sp-${status}`}>
-      <Icon name={STATUS[status].icon} size={14} /> {STATUS[status].label}
+      <Icon name={STATUS[status].icon} size={14} /> {auto && status === "rejected" ? "Auto-rejected" : STATUS[status].label}
     </span>
   );
 }
@@ -422,7 +443,7 @@ function ReportsTable({
                   )}
                 </td>
                 <td><span className={`pill pill-${r.ai.severity}`}>{r.ai.severity}</span></td>
-                <td><StatusPill status={r.status} /></td>
+                <td><StatusPill status={r.status} auto={isAutoRejected(r)} /></td>
                 <td>
                   <span className="cell-strong cap">{r.ai.confidence}</span>
                   <span className="cell-sub">{AI_SOURCE_LABEL[r.ai_source]}</span>
@@ -532,7 +553,7 @@ function ReportDetail({
       <div className="detail-head">
         <div>
           <h2 id="detail-heading">{r.reference_number}</h2>
-          <StatusPill status={r.status} />
+          <StatusPill status={r.status} auto={isAutoRejected(r)} />
         </div>
         <button type="button" className="icon-button" onClick={onClose} aria-label="Close details">
           <Icon name="x" />
@@ -558,6 +579,7 @@ function ReportDetail({
         <span className="badge">{AI_SOURCE_LABEL[r.ai_source]}</span>
         <span className="badge">Confidence: {r.ai.confidence}</span>
         {r.verified_by === "ai" && r.status === "verified" && <span className="badge">Confirmed by AI, not checked by staff</span>}
+        {isAutoRejected(r) && <span className="badge">Auto-rejected by AI: not a barrier</span>}
         {r.ai.affects.length > 0 && <span className="badge">Affects: {r.ai.affects.join(", ").replaceAll("_", " ")}</span>}
         {f.map((x) => (
           <span key={x} className="flag"><Icon name="alert" size={14} /> {x}</span>
@@ -606,8 +628,12 @@ function ReportDetail({
         {r.status === "in_progress" && (
           <button type="button" onClick={() => act("resolved")} disabled={busy}><Icon name="check" size={18} /> Mark resolved</button>
         )}
-        {(r.status === "resolved" || r.status === "rejected") && (
-          <button type="button" className="secondary" onClick={() => act("verified")} disabled={busy}><Icon name="refresh" size={18} /> Reopen</button>
+        {isAutoRejected(r) ? (
+          <button type="button" onClick={() => act("verified")} disabled={busy}><Icon name="check" size={18} /> Accept as a barrier</button>
+        ) : (
+          (r.status === "resolved" || r.status === "rejected") && (
+            <button type="button" className="secondary" onClick={() => act("verified")} disabled={busy}><Icon name="refresh" size={18} /> Reopen</button>
+          )
         )}
       </div>
       {r.status === "verified" && (

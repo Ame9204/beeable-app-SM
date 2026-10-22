@@ -9,10 +9,13 @@ export interface Fix {
   time: number;
 }
 
+/** "lost" = signal dropped (it may come back); "denied" = GPS can't be used at all. */
+export type GpsError = "lost" | "denied";
+
 /** Live GPS while `active` (native GPS in the app, browser geolocation on the web). */
 export function useWatchPosition(active: boolean) {
   const [fix, setFix] = useState<Fix | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<GpsError | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -21,7 +24,7 @@ export function useWatchPosition(active: boolean) {
     Geolocation.watchPosition({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 2_000 }, (pos, err) => {
       if (cancelled) return;
       if (err || !pos) {
-        setError("Lost the GPS signal. Keep walking; we'll pick it up again.");
+        setError("lost");
         return;
       }
       setError(null);
@@ -31,7 +34,7 @@ export function useWatchPosition(active: boolean) {
         id = watchId;
         if (cancelled) Geolocation.clearWatch({ id: watchId });
       })
-      .catch(() => setError("Can't use GPS. Check that location is turned on for BeeAble."));
+      .catch(() => setError("denied"));
     return () => {
       cancelled = true;
       if (id) Geolocation.clearWatch({ id });

@@ -10,7 +10,7 @@ def test_route_shape():
     r = client.get("/route", params={"from": "5.7141,100.4504", "to": "5.7099,100.4466", "profile": "step_free"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"shortest", "recommended", "costs", "explanation", "surveyed_share"}
+    assert set(body) == {"shortest", "recommended", "costs", "explanation", "surveyed_share", "alternative"}
     assert body["recommended"]["type"] == "FeatureCollection"
 
 
@@ -181,3 +181,18 @@ def test_cors_allows_local_dashboard_on_any_port():
     for origin in ("http://evil.example", "http://localhost.evil.example", "https://localhost:5173.evil.example"):
         r = client.get("/reports", headers={"Origin": origin})
         assert "access-control-allow-origin" not in r.headers, origin
+
+
+def test_non_barrier_is_auto_rejected_and_staff_can_re_accept(monkeypatch):
+    import main
+    from intake.service import fallback_suggestion
+
+    no = fallback_suggestion("").model_copy(
+        update={"is_accessibility_barrier": False, "category": "not_a_barrier", "confidence": "high"})
+    monkeypatch.setattr(main, "run_intake", lambda **kw: (no, "live"))
+    r = client.post("/reports", json={"text": "Nice tree", "lat": 5.7120, "lng": 100.4480}).json()
+    assert r["status"] == "rejected" and r["rejected_by"] == "ai"
+
+    p = client.patch(f"/reports/{r['id']}", json={"status": "verified"}).json()
+    assert p["status"] == "verified" and p["verified_by"] == "staff"
+    assert p["ai"]["is_accessibility_barrier"] and p["ai"]["category"] == "other"

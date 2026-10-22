@@ -121,3 +121,21 @@ def test_off_network_point_rejected(campus):
 def test_criticality_is_a_share(campus):
     crit = campus.criticality
     assert crit and all(0 < v <= 1 for v in crit.values())
+
+
+def test_alternative_takes_a_different_way_and_obeys_the_profile(campus):
+    r = campus.route(CENTER, CLINIC, "step_free", steps())
+    alt = r["alternative"]
+    assert alt is not None
+    rec, other = set(edges_of(r["recommended"])), edges_of(alt["route"])
+    assert set(other) != rec
+    assert STEPS_EDGE not in other  # still never through a hard block
+    rec_m, alt_m = r["costs"]["recommended"]["length_m"], alt["costs"]["length_m"]
+    assert f"{alt_m} m" in alt["explanation"][0] and f"{abs(alt_m - rec_m)} m" in alt["explanation"][0]
+
+
+def test_route_text_in_malay(campus):
+    r = campus.route(CENTER, CLINIC, "step_free", steps(), lang="ms")
+    assert "tangga tanpa ramp" in r["explanation"][0]
+    assert r["costs"]["shortest"].get("blocked_by") is None or "tangga" in r["costs"]["shortest"]["blocked_by"]
+    assert "BeeAble" in r["alternative"]["explanation"][0] and "Laluan alternatif" in r["alternative"]["explanation"][0]

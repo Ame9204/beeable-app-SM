@@ -15,6 +15,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 Profile = Literal["step_free", "easy_walking"]
 ReportStatus = Literal["unverified", "verified", "rejected", "in_progress", "resolved"]
 DataSource = Literal["surveyed", "imported", "reported", "simulated"]
+Language = Literal["en", "ms"]  # UI languages for route explanations and labels
 
 PROFILES: tuple[Profile, ...] = ("step_free", "easy_walking")
 
@@ -54,6 +55,12 @@ VERIFIED_REPORT_PENALTY = {
     "missing_ramp": "verified_kerb_barrier",
 }
 LEAST_BAD_MULTIPLIER = 100  # impassable edges cost this × length when no route avoids them
+# Alternative route: edges of the recommended route cost ALT_REUSE_PENALTY × more while searching, so it
+# takes a different way. Dropped if it still shares more than ALT_MAX_SHARED of its length with the
+# recommended route, or is more than ALT_MAX_DETOUR × as long. Team choices, not standards.
+ALT_REUSE_PENALTY = 4.0
+ALT_MAX_SHARED = 0.7
+ALT_MAX_DETOUR = 2.2
 
 BARRIER_CATEGORIES = (
     "steps_no_ramp",

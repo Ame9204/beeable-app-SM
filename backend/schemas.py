@@ -15,6 +15,19 @@ class RouteResponse(BaseModel):
     costs: dict[str, Any]
     explanation: list[str]
     surveyed_share: float = Field(ge=0, le=1)
+    alternative: "AlternativeRoute | None" = None
+
+
+class AlternativeRoute(BaseModel):
+    """Next-best route for the profile that takes a mostly different way; the user can pick it instead."""
+
+    route: dict[str, Any]  # GeoJSON FeatureCollection
+    costs: dict[str, Any]
+    explanation: list[str]
+    surveyed_share: float = Field(ge=0, le=1)
+
+
+RouteResponse.model_rebuild()
 
 
 class ReportCreate(BaseModel):
@@ -69,6 +82,7 @@ class Report(BaseModel):
     created_at: datetime
     verified_at: datetime | None = None
     verified_by: Literal["ai", "staff"] | None = None  # who confirmed it (data-honesty label)
+    rejected_by: Literal["ai", "staff"] | None = None  # "ai" = auto-rejected as not a barrier
     resolved_at: datetime | None = None
     # Computed when the report is returned; not stored.
     similar: list[SimilarReport] = []

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { MIN_PASSWORD, getSnapshot, hasAccount, logIn, register } from "../account";
 import { Icon } from "../components/Icon";
 import { useFocusHeading } from "../hooks/useFocusHeading";
+import { useT } from "../i18n";
 
 type Mode = "login" | "register";
 type Errors = Partial<Record<"name" | "email" | "password" | "form", string>>;
@@ -19,12 +20,13 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const isRegister = mode === "register";
+  const { t } = useT();
 
   function validate(): Errors {
     const e: Errors = {};
-    if (isRegister && !name.trim()) e.name = "Enter your name.";
-    if (!EMAIL_RE.test(email.trim())) e.email = "Enter an email address like name@example.com.";
-    if (password.length < MIN_PASSWORD) e.password = `Use at least ${MIN_PASSWORD} characters.`;
+    if (isRegister && !name.trim()) e.name = t("auth.errName");
+    if (!EMAIL_RE.test(email.trim())) e.email = t("auth.errEmail");
+    if (password.length < MIN_PASSWORD) e.password = t("auth.errPassword", { n: MIN_PASSWORD });
     return e;
   }
 
@@ -45,10 +47,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
         const err = await logIn(email, password);
         if (err) {
           setErrors({
-            form:
-              err === "no_account"
-                ? "There's no account on this phone yet. Create one, or continue without an account."
-                : "That email and password don't match the account on this phone.",
+            form: t(err === "no_account" ? "auth.errNoAccount" : "auth.errWrong"),
           });
           return;
         }
@@ -64,24 +63,21 @@ export function AuthPage({ mode }: { mode: Mode }) {
   return (
     <div className="onboard">
       <div className="onboard-top">
-        <Link to="/welcome" className="button icon-button" aria-label="Back">
+        <Link to="/welcome" className="button icon-button" aria-label={t("auth.back")}>
           <Icon name="arrowLeft" />
         </Link>
       </div>
       <div className="onboard-body">
         <h1 ref={heading} tabIndex={-1}>
-          {isRegister ? "Create your account" : "Welcome back"}
+          {t(isRegister ? "auth.registerTitle" : "auth.loginTitle")}
         </h1>
         <p className="muted">
-          {isRegister
-            ? "It's saved on this phone only, so the app remembers how you get around."
-            : "Log in with the account you made on this phone."}
+          {t(isRegister ? "auth.registerLead" : "auth.loginLead")}
         </p>
 
         {isRegister && hasAccount() && (
           <p className="notice notice-warn">
-            This phone already has an account. Creating a new one replaces it.{" "}
-            <Link to="/login">Log in instead</Link>
+            {t("auth.replaceWarning")} <Link to="/login">{t("auth.loginInstead")}</Link>
           </p>
         )}
 
@@ -94,7 +90,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
 
           {isRegister && (
             <div className="field">
-              <label htmlFor="auth-name">Your name</label>
+              <label htmlFor="auth-name">{t("auth.name")}</label>
               <input
                 id="auth-name"
                 value={name}
@@ -108,7 +104,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           )}
 
           <div className="field">
-            <label htmlFor="auth-email">Email</label>
+            <label htmlFor="auth-email">{t("auth.email")}</label>
             <input
               id="auth-email"
               type="email"
@@ -123,7 +119,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           </div>
 
           <div className="field">
-            <label htmlFor="auth-password">Password</label>
+            <label htmlFor="auth-password">{t("auth.password")}</label>
             <div className="password-row">
               <input
                 id="auth-password"
@@ -141,14 +137,15 @@ export function AuthPage({ mode }: { mode: Mode }) {
                 className="icon-button reveal"
                 onClick={() => setShowPassword((s) => !s)}
                 aria-pressed={showPassword}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={t(showPassword ? "auth.hide" : "auth.show")}
               >
-                <Icon name={showPassword ? "eyeOff" : "eye"} />
+                {/* The icon shows the current state: crossed eye while the password is hidden. */}
+                <Icon name={showPassword ? "eye" : "eyeOff"} />
               </button>
             </div>
             {isRegister && (
               <p id="auth-password-hint" className="hint">
-                At least {MIN_PASSWORD} characters.
+                {t("auth.passwordHint", { n: MIN_PASSWORD })}
               </p>
             )}
             <FieldError id="auth-password-error" text={errors.password} />
@@ -156,18 +153,18 @@ export function AuthPage({ mode }: { mode: Mode }) {
 
           <button type="submit" className="primary big" disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            {isRegister ? "Create account" : "Log in"}
+            {t(isRegister ? "auth.createAccount" : "auth.logIn")}
           </button>
         </form>
 
         <p className="center switch-mode">
           {isRegister ? (
             <>
-              Already have an account? <Link to="/login">Log in</Link>
+              {t("auth.haveAccount")} <Link to="/login">{t("auth.logIn")}</Link>
             </>
           ) : (
             <>
-              New here? <Link to="/register">Create an account</Link>
+              {t("auth.newHere")} <Link to="/register">{t("landing.register")}</Link>
             </>
           )}
         </p>

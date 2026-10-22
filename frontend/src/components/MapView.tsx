@@ -1,16 +1,21 @@
 import { useEffect } from "react";
-import { AttributionControl, CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { AttributionControl, CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { CATEGORIES } from "../config";
 import { divIcon, latLngBounds, type PathOptions } from "leaflet";
 import type { Feature, LineString } from "geojson";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_ZOOM, PRECINCT_CENTER } from "../config";
+import { useT, type TKey } from "../i18n";
 import type { Report, RouteResponse, SegmentProps } from "../types";
 import { BEE_SVG } from "./Bee";
 
 // Colours are paired with dash patterns + the text legend; never colour alone.
 export const ROUTE_COLOR = "#0F766E";
 export const SHORTEST_COLOR = "#6B6153";
+export const ALT_COLOR = "#6D28D9";
 const SHORTEST_STYLE: PathOptions = { color: SHORTEST_COLOR, weight: 4, opacity: 0.85, dashArray: "2 8", lineCap: "round" };
+// The route not chosen: dash-dot (its own pattern, not just its own colour), thick enough to tap.
+const ALT_STYLE: PathOptions = { color: ALT_COLOR, weight: 6, opacity: 0.8, dashArray: "14 6 2 6", lineCap: "round" };
 // White casing under the recommended route so it stands out on busy OSM tiles.
 const CASING_STYLE: PathOptions = { color: "#ffffff", weight: 11, opacity: 0.9, lineCap: "round" };
 
@@ -19,6 +24,8 @@ function recommendedStyle(feature?: Feature<LineString, SegmentProps>): PathOpti
   // Unknown segments render dashed — never treat unknown as safe.
   return { color: ROUTE_COLOR, weight: 7, opacity: 0.95, lineCap: "round", dashArray: unknown ? "10 10" : undefined };
 }
+
+const CATEGORY_KEYS = Object.fromEntries(CATEGORIES.map((c) => [`cat.${c.id}`, true]));
 
 // Small SVG strings for Leaflet divIcons (Leaflet needs HTML, not React elements).
 const svg = (d: string, size = 16) =>
@@ -68,7 +75,7 @@ const destinationIcon = (type?: string) =>
 
 function barrierSegments(route: RouteResponse) {
   const seen = new Map<string, { at: [number, number]; text: string; impassable: boolean }>();
-  for (const f of [...route.shortest.features, ...route.recommended.features]) {
+  for (const f of [...route.shortest.features, ...route.recommended.features, ...(route.alternative?.route.features ?? [])]) {
     const p = f.properties;
     if (!p.barrier || seen.has(p.edge_id)) continue;
     const c = f.geometry.coordinates;
@@ -83,7 +90,7 @@ function FitRoute({ route, routeKey }: { route: RouteResponse | null; routeKey: 
   const map = useMap();
   useEffect(() => {
     if (!route) return;
-    const pts = [...route.shortest.features, ...route.recommended.features].flatMap((f) =>
+    const pts = [...route.shortest.features, ...route.recommended.features, ...(route.alternative?.route.features ?? [])].flatMap((f) =>
       f.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]),
     );
     if (!pts.length) return;
@@ -105,12 +112,7 @@ const REPORT_ICONS: Record<string, ReturnType<typeof divIcon>> = {
   in_progress: divIcon({ className: "report-icon report-in_progress", html: svg(GLYPH.wrench, 13), iconSize: [26, 26] }),
 };
 
-// A little personality in the popups; the plain status still follows underneath.
-const REPORT_HEADLINE: Record<string, string> = {
-  unverified: "Someone spotted something",
-  verified: "Bzzt! Confirmed obstacle",
-  in_progress: "Busy bees are fixing this",
-};
+// A little personality in the popups (map.headline.<status>); the plain status still follows underneath.
 
 /** Pan to a point whenever `focus.key` changes (locate-me, a report picked on the dashboard). */
 function FlyTo({ focus }: { focus?: MapFocus }) {
@@ -147,15 +149,23 @@ interface Props {
   highlightId?: string;
   /** Changes whenever the route request changes; GeoJSON layers don't re-render on new data otherwise. */
   routeKey?: string;
+  /** Tapping the alternative line picks it (omitted during a journey). */
+  onPickAlternative?: () => void;
 }
 
-export function MapView({ route, reports, origin, destination, destinationType, focus, highlightId, routeKey = "route" }: Props) {
+export function MapView({
+  route, reports, origin, destination, destinationType, focus, highlightId, routeKey = "route", onPickAlternative,
+}: Props) {
+  const { t } = useT();
+  const statusText = (r: Report) =>
+    r.status === "verified" && r.verified_by === "ai" ? t("status.verifiedAi") : t(`status.${r.status}`);
+  const categoryText = (c: string) => (`cat.${c}` in CATEGORY_KEYS ? t(`cat.${c}` as TKey) : c.replaceAll("_", " "));
   return (
     <MapContainer
       center={PRECINCT_CENTER}
       zoom={DEFAULT_ZOOM}
       className="map"
-      aria-label="Map of the campus showing routes and reported barriers"
+      aria-label={t("map.aria")}
       attributionControl={false}
     >
       <AttributionControl position="topright" prefix={false} />
@@ -168,30 +178,42 @@ export function MapView({ route, reports, origin, destination, destinationType, 
       {route && (
         <>
           <GeoJSON key={`s-${routeKey}`} data={route.shortest} style={SHORTEST_STYLE} />
+          {route.alternative && (
+            <GeoJSON
+              key={`a-${routeKey}`}
+              data={route.alternative.route}
+              style={ALT_STYLE}
+              interactive={!!onPickAlternative}
+              eventHandlers={onPickAlternative ? { click: onPickAlternative } : undefined}
+            >
+              {/* The route card's radio buttons do the same for keyboard and screen-reader users. */}
+              {onPickAlternative && <Tooltip sticky>{t("map.altTitle")}</Tooltip>}
+            </GeoJSON>
+          )}
           <GeoJSON key={`c-${routeKey}`} data={route.recommended} style={CASING_STYLE} />
           <GeoJSON key={`r-${routeKey}`} data={route.recommended} style={recommendedStyle as never} />
           {barrierSegments(route).map(([id, b]) => (
-            <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={`Barrier: ${b.text}`}>
+            <Marker key={`${routeKey}-${id}`} position={b.at} icon={BARRIER_ICON} title={t("map.barrierTitle", { t: b.text })}>
               <Popup>
-                <span className="pop-title">Bzzt! Obstacle here</span>
+                <span className="pop-title">{t("map.obstacleHere")}</span>
                 {b.text}
-                {b.impassable && <span className="pop-note">Impassable for your profile</span>}
+                {b.impassable && <span className="pop-note">{t("map.impassable")}</span>}
               </Popup>
             </Marker>
           ))}
         </>
       )}
       {origin && (
-        <Marker position={origin} icon={ORIGIN_ICON} title="Start: you are here">
+        <Marker position={origin} icon={ORIGIN_ICON} title={t("map.startTitle")}>
           <Popup>
-            <span className="pop-title">You are here</span>
-            Buzzing along nicely.
+            <span className="pop-title">{t("map.youAreHere")}</span>
+            {t("map.buzzing")}
           </Popup>
         </Marker>
       )}
       {destination && (
-        <Marker position={destination} icon={destinationIcon(destinationType)} title="Destination">
-          <Popup>Destination</Popup>
+        <Marker position={destination} icon={destinationIcon(destinationType)} title={t("map.destination")}>
+          <Popup>{t("map.destination")}</Popup>
         </Marker>
       )}
       {reports
@@ -201,20 +223,16 @@ export function MapView({ route, reports, origin, destination, destinationType, 
             key={r.id}
             position={[r.lat, r.lng]}
             icon={REPORT_ICONS[r.status]}
-            title={`Report ${r.reference_number}: ${r.status.replace("_", " ")}`}
+            title={t("map.reportTitle", { ref: r.reference_number, status: statusText(r) })}
             zIndexOffset={r.id === highlightId ? 1000 : 0}
           >
             {/* No reporter identity is ever shown. */}
             <Popup>
-              <span className="pop-title">{REPORT_HEADLINE[r.status] ?? "Reported barrier"}</span>
-              <strong className="pop-cat">{r.ai.category.replaceAll("_", " ")}</strong>
-              Status: {r.status === "unverified"
-                ? "Unverified (not yet checked by staff)"
-                : r.status === "verified"
-                  ? (r.verified_by === "ai" ? "Confirmed by AI" : "Confirmed")
-                  : r.status.replace("_", " ")}
+              <span className="pop-title">{t(`map.headline.${r.status as "unverified" | "verified" | "in_progress"}`)}</span>
+              <strong className="pop-cat">{categoryText(r.ai.category)}</strong>
+              {t("map.status", { s: statusText(r) })}
               <br />
-              Source: {r.source}
+              {t("map.source", { s: t(`source.${r.source}`) })}
             </Popup>
           </Marker>
         ))}

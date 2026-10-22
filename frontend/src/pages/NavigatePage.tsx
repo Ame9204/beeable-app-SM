@@ -6,11 +6,13 @@ import { RouteCard, RouteSkeleton } from "../components/RouteCard";
 import { RouteLegend } from "../components/RouteLegend";
 import { JourneyMode } from "../components/JourneyMode";
 import { PlaceSearch } from "../components/PlaceSearch";
-import { LOCATION_MESSAGE, useLocation } from "../hooks/useLocation";
-import { PLACE_TYPE_LABEL, findPlace, rememberPlace, type Place } from "../places";
+import { useLocation } from "../hooks/useLocation";
+import { findPlace, rememberPlace, type Place } from "../places";
 import { useReports } from "../hooks/useReports";
 import { useRoute } from "../hooks/useRoute";
 import { useSheet } from "../hooks/useSheet";
+import { useT } from "../i18n";
+import { chooseRoute, type RouteChoice } from "../routeChoice";
 import type { Profile } from "../types";
 
 const PROFILE_KEY = "beeable.profile";
@@ -31,10 +33,19 @@ export function NavigatePage() {
   const [legendOpen, setLegendOpen] = useState(false);
   const [focus, setFocus] = useState<MapFocus>();
   const [journey, setJourney] = useState(false);
+  const [choice, setChoice] = useState<RouteChoice>("recommended");
+  const { t, lang } = useT();
   const dest = findPlace(destId);
   const to: [number, number] | null = dest ? [dest.lat, dest.lng] : null;
   const location = useLocation();
-  const { route, loading, error, version } = useRoute(location.position, to, profile);
+  const { route, loading, error, version } = useRoute(location.position, to, profile, lang);
+  // Each new route starts on the BeeAble route; `shown` has the picked one in `recommended`.
+  const [choiceFor, setChoiceFor] = useState(version);
+  if (choiceFor !== version) {
+    setChoiceFor(version);
+    setChoice("recommended");
+  }
+  const shown = route && chooseRoute(route, choice);
   const { reports } = useReports();
   const sheet = useSheet("half");
 
@@ -60,10 +71,10 @@ export function NavigatePage() {
     setFocus({ at, key: Date.now() });
   }
 
-  if (journey && route && dest) {
+  if (journey && shown && dest) {
     return (
       <JourneyMode
-        route={route}
+        route={shown}
         dest={dest}
         profile={profile}
         reports={reports}
@@ -78,22 +89,23 @@ export function NavigatePage() {
   const canStart = location.status === "ok";
 
   const locationNote =
-    location.status !== "idle" && location.status !== "ok" ? LOCATION_MESSAGE[location.status] : null;
+    location.status !== "idle" && location.status !== "ok" ? t(`loc.${location.status}`) : null;
 
   return (
     <div className="navigate">
       <MapView
-        route={route}
+        route={shown}
         reports={reports}
         origin={location.position}
         destination={to}
         destinationType={dest?.type}
         focus={focus}
-        routeKey={String(version)}
+        routeKey={`${version}-${choice}`}
+        onPickAlternative={() => setChoice((c) => (c === "alternative" ? "recommended" : "alternative"))}
       />
 
       <div className="map-tools">
-        <button type="button" className="fab" onClick={locateMe} aria-label="Show my location">
+        <button type="button" className="fab" onClick={locateMe} aria-label={t("nav.locateMe")}>
           <Icon name="locate" />
         </button>
         <button
@@ -102,15 +114,15 @@ export function NavigatePage() {
           onClick={() => setLegendOpen((o) => !o)}
           aria-expanded={legendOpen}
           aria-controls="map-key"
-          aria-label="Map key"
+          aria-label={t("nav.mapKey")}
         >
           <Icon name="layers" />
         </button>
         {legendOpen && (
-          <div id="map-key" className="map-key card" role="region" aria-label="Map key">
+          <div id="map-key" className="map-key card" role="region" aria-label={t("nav.mapKey")}>
             <div className="map-key-head">
-              <h2>Map key</h2>
-              <button type="button" className="icon-button" onClick={() => setLegendOpen(false)} aria-label="Close map key">
+              <h2>{t("nav.mapKey")}</h2>
+              <button type="button" className="icon-button" onClick={() => setLegendOpen(false)} aria-label={t("nav.closeKey")}>
                 <Icon name="x" />
               </button>
             </div>
@@ -122,13 +134,13 @@ export function NavigatePage() {
       <section className={`sheet sheet-${sheet.snap}`} aria-labelledby="nav-heading">
         <button type="button" className="sheet-handle" {...sheet.handleProps}>
           <span className="sheet-grip" aria-hidden="true" />
-          <span className="visually-hidden">{sheet.snap === "full" ? "Shrink panel" : "Expand panel"}</span>
+          <span className="visually-hidden">{t(sheet.snap === "full" ? "nav.shrink" : "nav.expand")}</span>
         </button>
 
         {!dest ? (
           <>
             <h1 id="nav-heading" className="sheet-title">
-              Where would you like to go?
+              {t("nav.where")}
             </h1>
             <ProfilePicker profile={profile} onChange={setProfile} />
             <PlaceSearch from={location.status === "ok" ? location.position : null} onPick={chooseDestination} />
@@ -140,13 +152,13 @@ export function NavigatePage() {
                 <Icon name={POI_ICON[dest.type] ?? "pin"} />
               </span>
               <div className="trip-text">
-                <span className="trip-label">Route to · {PLACE_TYPE_LABEL[dest.type]}</span>
+                <span className="trip-label">{t("nav.routeTo", { type: t(`place.${dest.type}`) })}</span>
                 <h1 id="nav-heading" className="trip-name">
                   {dest.name}
                 </h1>
               </div>
               <button type="button" className="secondary small" onClick={() => setDestId("")}>
-                Change
+                {t("nav.change")}
               </button>
             </div>
             <ProfilePicker profile={profile} onChange={setProfile} compact />
@@ -158,31 +170,31 @@ export function NavigatePage() {
               )}
               {error && (
                 <p className="notice notice-error" role="alert">
-                  Could not load a route: {error}
+                  {t("nav.couldNotLoad", { error })}
                 </p>
               )}
               {loading && (
                 <>
-                  <p className="visually-hidden">Finding a route…</p>
+                  <p className="visually-hidden">{t("nav.finding")}</p>
                   <RouteSkeleton />
                 </>
               )}
               {route && !loading && (
                 <>
                   <button type="button" className="primary big start-journey" onClick={() => setJourney(true)} disabled={!canStart}>
-                    <Icon name="route" /> Start journey
+                    <Icon name="route" /> {t("nav.start")}
                   </button>
                   {!canStart && (
                     <p className="hint">
-                      <Icon name="info" size={18} /> Turn-by-turn directions need your GPS on campus.{" "}
+                      <Icon name="info" size={18} /> {t("nav.needGps")}{" "}
                       {location.status !== "locating" && (
                         <button type="button" className="link-button small" onClick={() => location.locate()}>
-                          Try again
+                          {t("nav.tryAgain")}
                         </button>
                       )}
                     </p>
                   )}
-                  <RouteCard route={route} />
+                  <RouteCard route={route} choice={choice} onChoose={setChoice} />
                 </>
               )}
             </div>

@@ -2,7 +2,7 @@
 // the MVP has no server accounts, and reports never carry the reporter's identity.
 import type { Profile } from "./types";
 
-export type Language = "ms" | "en" | "zh" | "ta";
+export type Language = "ms" | "en";
 export type Need = "wheelchair" | "stroller" | "elderly" | "low_vision";
 
 export interface Account {
@@ -24,24 +24,21 @@ export interface UserProfile {
 export type Session = "user" | "guest" | null;
 export type OnboardingState = "landing" | "profile" | "done";
 
+// The app's own text comes in these two (src/i18n.ts). `speech` is the voice used for spoken directions.
 export const LANGUAGES: { id: Language; label: string; speech: string }[] = [
-  { id: "ms", label: "Bahasa Malaysia", speech: "ms-MY" },
+  { id: "ms", label: "Bahasa Melayu", speech: "ms-MY" },
   { id: "en", label: "English", speech: "en-MY" },
-  { id: "zh", label: "中文", speech: "cmn-Hans-CN" },
-  { id: "ta", label: "தமிழ்", speech: "ta-IN" },
 ];
+const isLanguage = (x: unknown): x is Language => x === "ms" || x === "en";
 
-// Same vocabulary as the AI intake `affects` field.
-export const NEEDS: { id: Need; label: string; hint: string }[] = [
-  { id: "wheelchair", label: "I use a wheelchair", hint: "Manual or powered" },
-  { id: "stroller", label: "I push a stroller or trolley", hint: "Prams, carts, luggage" },
-  { id: "elderly", label: "I tire easily on long walks", hint: "Or need to rest along the way" },
-  { id: "low_vision", label: "I have low vision", hint: "Including partial sight" },
-];
+// Same vocabulary as the AI intake `affects` field. Labels live in i18n.ts (need.<id>).
+export const NEEDS: Need[] = ["wheelchair", "stroller", "elderly", "low_vision"];
 
 const ACCOUNT_KEY = "beeable.account";
 const SESSION_KEY = "beeable.session";
 const PROFILE_KEY = "beeable.userProfile";
+// App language before a profile exists (welcome / log-in screens); the profile's language wins after that.
+const LANGUAGE_KEY = "beeable.language";
 // Read by NavigatePage to pick the default routing profile.
 const ROUTING_PROFILE_KEY = "beeable.profile";
 
@@ -81,6 +78,8 @@ export interface AccountSnapshot {
   session: Session;
   profile: UserProfile | null;
   state: OnboardingState;
+  /** Language for the app's own text. */
+  language: Language;
 }
 
 function readSnapshot(): AccountSnapshot {
@@ -93,14 +92,23 @@ function readSnapshot(): AccountSnapshot {
   } catch {
     /* blocked */
   }
-  const profile = read<UserProfile>(PROFILE_KEY);
+  const stored = read<UserProfile>(PROFILE_KEY);
+  // Profiles saved before the app dropped 中文/தமிழ் fall back to English.
+  const profile = stored && { ...stored, language: isLanguage(stored.language) ? stored.language : "en" };
+  let saved: unknown = null;
+  try {
+    saved = localStorage.getItem(LANGUAGE_KEY);
+  } catch {
+    /* blocked */
+  }
+  const language: Language = profile?.language ?? (isLanguage(saved) ? saved : "en");
   let state: OnboardingState;
   // Never lock people out: if we can't store anything, skip onboarding.
   if (!storageAvailable()) state = "done";
   else if (!session) state = "landing";
   else if (!profile) state = "profile";
   else state = "done";
-  return { account, session, profile, state };
+  return { account, session, profile, state, language };
 }
 
 // Tiny external store so App and every page see the same state.
@@ -184,12 +192,16 @@ export function logOut() {
   refresh();
 }
 
+/** Switch the app language now (welcome screen); saving a profile sets it too. */
+export function setLanguage(language: Language) {
+  write(LANGUAGE_KEY, language);
+  refresh();
+}
+
 export function saveProfile(profile: UserProfile) {
   write(PROFILE_KEY, profile);
+  write(LANGUAGE_KEY, profile.language);
   write(ROUTING_PROFILE_KEY, profile.mobility);
   refresh();
 }
 
-export function speechLangFor(language: Language | undefined): string | undefined {
-  return LANGUAGES.find((l) => l.id === language)?.speech;
-}

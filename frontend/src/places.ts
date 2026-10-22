@@ -17,16 +17,7 @@ export interface Place {
 
 export const PLACES = data.places as Place[];
 
-export const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
-  clinic: "Clinic",
-  mosque_surau: "Surau",
-  bus_stop: "Bus stop",
-  library: "Library",
-  food: "Food & drink",
-  residence: "College / hostel",
-  sport: "Sport",
-  building: "Building",
-};
+// Labels for each type: i18n.ts (place.<type>).
 
 // Extra words people might type (English and Malay), so "clinic" finds "Unit Kesihatan".
 const ALIASES: Record<PlaceType, string[]> = {

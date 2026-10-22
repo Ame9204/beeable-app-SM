@@ -14,8 +14,9 @@ export const CAMPUS_RADIUS_M = 700;
 export const WALK_SPEED_MPS = 1.0;
 
 export const PROFILES = [
-  { id: "step_free", label: "Step-free", hint: "Avoids steps and steep slopes" },
-  { id: "easy_walking", label: "Easy walking", hint: "Fewer steps, gentler slopes, more shade" },
+  // Labels, hints and examples: i18n.ts (profile.<id>.*)
+  { id: "step_free" },
+  { id: "easy_walking" },
 ] as const;
 
 // Demo destinations on the UiTM Kedah campus (source: simulated) until /data/processed is seeded.

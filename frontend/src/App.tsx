@@ -13,12 +13,17 @@ import { isNative } from "./platform";
 import { AccountMenu } from "./components/AccountMenu";
 import { Icon, Logo, type IconName } from "./components/Icon";
 import { useAccount } from "./hooks/useAccount";
+import { useT, type TKey } from "./i18n";
 
 // Full-screen onboarding screens: no header or tab bar.
 const ONBOARDING_PATHS = ["/welcome", "/login", "/register", "/setup"];
 
 export function App() {
   const { pathname } = useLocation();
+  const { t, lang } = useT();
+  useEffect(() => {
+    document.documentElement.lang = lang; // screen readers pick the right voice
+  }, [lang]);
   const [offline, setOffline] = useState(USE_MOCKS);
   useEffect(() => {
     const onFallback = () => setOffline(true);
@@ -53,7 +58,7 @@ export function App() {
   return (
     <div className="app">
       <a href="#main" className="skip-link">
-        Skip to content
+        {t("app.skip")}
       </a>
       <header className="topbar">
         <span className="brand">
@@ -66,8 +71,11 @@ export function App() {
       </header>
       {offline && (
         <p className="offline-banner" role="status">
-          <Icon name="alert" size={20} /> <span>Can't reach the BeeAble server, so you're seeing <strong>sample data</strong>. Reports you send now
-          won't reach staff.</span>
+          <Icon name="alert" size={20} />{" "}
+          <span>
+            {t("app.offline1")} <strong>{t("app.offline2")}</strong>
+            {t("app.offline3")}
+          </span>
         </p>
       )}
       <main id="main">
@@ -97,22 +105,23 @@ function RequireSession({ children }: { children: ReactNode }) {
 }
 
 // The Android app is the resident app; staff use /insights on the web.
-const TABS: { to: string; label: string; icon: IconName; staff?: boolean }[] = [
-  { to: "/", label: "Navigate", icon: "map" },
-  { to: "/report", label: "Report", icon: "camera" },
-  { to: "/insights", label: "Staff", icon: "clipboard", staff: true },
+const TABS: { to: string; label: TKey; icon: IconName; staff?: boolean }[] = [
+  { to: "/", label: "tab.navigate", icon: "map" },
+  { to: "/report", label: "tab.report", icon: "camera" },
+  { to: "/insights", label: "tab.staff", icon: "clipboard", staff: true },
 ];
 
 /** Same links twice: in the header on wide screens, as a bottom tab bar on phones (CSS decides). */
 function TabNav({ className }: { className: string }) {
+  const { t } = useT();
   return (
-    <nav aria-label="Main" className={className}>
-      {TABS.filter((t) => !(t.staff && isNative)).map((t) => (
-        <NavLink key={t.to} to={t.to} end={t.to === "/"}>
+    <nav aria-label={t("tab.main")} className={className}>
+      {TABS.filter((tab) => !(tab.staff && isNative)).map((tab) => (
+        <NavLink key={tab.to} to={tab.to} end={tab.to === "/"}>
           <span className="tab-icon">
-            <Icon name={t.icon} />
+            <Icon name={tab.icon} />
           </span>
-          <span>{t.label}</span>
+          <span>{t(tab.label)}</span>
         </NavLink>
       ))}
     </nav>

@@ -38,6 +38,15 @@ export interface RouteResponse {
   costs: { profile?: Profile; shortest: PathCost; recommended: PathCost };
   explanation: string[];
   surveyed_share: number;
+  /** Next-best route for the profile that mostly takes a different way; null when there isn't one. */
+  alternative?: AlternativeRoute | null;
+}
+
+export interface AlternativeRoute {
+  route: RouteGeoJSON;
+  costs: PathCost;
+  explanation: string[];
+  surveyed_share: number;
 }
 
 export interface AISuggestion {
@@ -81,6 +90,8 @@ export interface Report {
   verified_at: string | null;
   /** Who confirmed it: the AI on intake, or staff reopening it. Absent in older/sample data. */
   verified_by?: "ai" | "staff" | null;
+  /** "ai" = auto-rejected as not a barrier; staff can re-accept it. */
+  rejected_by?: "ai" | "staff" | null;
   resolved_at: string | null;
   /** Computed by the server; absent in sample data. */
   similar?: SimilarReport[];

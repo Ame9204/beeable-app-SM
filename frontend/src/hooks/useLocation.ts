@@ -43,11 +43,3 @@ export function useLocation() {
 
   return { status, position, locate };
 }
-
-export const LOCATION_MESSAGE: Record<LocationStatus, string> = {
-  idle: "",
-  locating: "Finding your location…",
-  ok: "Using your current location.",
-  off_campus: "You seem to be off campus, so we're using the campus centre.",
-  unavailable: "Location unavailable, so we're using the campus centre.",
-};

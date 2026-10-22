@@ -28,7 +28,7 @@ export function JourneyMode({
   return (
     <div className="navigate journey">
       <MapView
-        route={journey.route}
+        route={{ ...journey.route, alternative: null }}
         reports={reports}
         origin={fix?.at}
         destination={[dest.lat, dest.lng]}

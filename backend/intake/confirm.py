@@ -1,4 +1,4 @@
-"""Whether the AI may confirm a new report on its own, without a staff Verify step."""
+"""What the AI may decide on its own about a new report: confirm a clear barrier, or auto-reject a non-barrier."""
 
 from typing import Iterable
 
@@ -17,3 +17,8 @@ def ai_confirms(ai: AISuggestion, ai_source: AISource, similar: Iterable) -> boo
         and ai.possible_duplicate_of is None
         and not any(m.match == "likely" for m in similar)
     )
+
+
+def ai_rejects(ai: AISuggestion, ai_source: AISource) -> bool:
+    """A real AI answer that says this is not an accessibility barrier. Staff can still re-accept it."""
+    return ai_source in ("live", "cached") and (not ai.is_accessibility_barrier or ai.category == "not_a_barrier")

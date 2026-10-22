@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { WALK_SPEED_MPS } from "../config";
 import { useVoice } from "../hooks/useVoice";
-import { useWatchPosition, type Fix } from "../hooks/useWatchPosition";
+import { LOCALE, useT } from "../i18n";
+import { useWatchPosition, type Fix, type GpsError } from "../hooks/useWatchPosition";
 import {
   buildNavPath, distance, formatDistance, maneuverText, spokenDistance, locateOnPath,
   type LatLng, type Maneuver, type ManeuverKind, type RouteBarrier,
@@ -34,7 +35,7 @@ export const MANEUVER_ICON: Record<ManeuverKind, IconName> = {
 export interface Journey {
   route: RouteResponse;
   fix: Fix | null;
-  gpsError: string | null;
+  gpsError: GpsError | null;
   along: number;
   offset: number;
   length: number;
@@ -56,7 +57,10 @@ export function useJourney({
   active: boolean;
 }) {
   const { fix, error: gpsError } = useWatchPosition(active);
-  const voice = useVoice();
+  const { t, lang } = useT();
+  const voice = useVoice(lang);
+  const turn = (m: Maneuver) => maneuverText(m, destName, lang);
+  const said = (m: number) => spokenDistance(m, lang);
   const [route, setRoute] = useState(initial);
   const [progress, setProgress] = useState({ along: 0, offset: 0 });
   const [arrived, setArrived] = useState(false);
@@ -102,7 +106,7 @@ export function useJourney({
     const remaining = path.length - loc.along;
     if (remaining < ARRIVE_M || distance(fix.at, dest) < ARRIVE_M + 5) {
       setArrived(true);
-      announce("arrive", `You have arrived at ${destName}.`);
+      announce("arrive", t("journey.sayArrived", { dest: destName }));
       return;
     }
 
@@ -112,9 +116,9 @@ export function useJourney({
     if (offFixes.current >= OFF_ROUTE_FIXES && !rerouting) {
       offFixes.current = 0;
       setRerouting(true);
-      announce(`reroute-${Date.now()}`, "Finding a new route.");
+      announce(`reroute-${Date.now()}`, t("journey.sayRerouting"));
       api
-        .route(fix.at, dest, profile)
+        .route(fix.at, dest, profile, lang)
         .then((r) => {
           spoken.current.clear();
           rerouted.current = true;
@@ -129,22 +133,23 @@ export function useJourney({
     const next = path.maneuvers.find((m) => m.along > loc.along + 3);
     if (!spoken.current.has("start")) {
       // One opening sentence that already includes the first instruction (so it isn't cut off by it).
-      let first = `Walk ${spokenDistance(remaining)}.`;
+      let first = t("journey.sayWalk", { d: said(remaining) });
       if (next && next.kind !== "arrive") {
         const d = next.along - loc.along;
-        first = `In ${spokenDistance(d)}, ${maneuverText(next, destName).toLowerCase()}.`;
+        first = t("journey.sayIn", { d: said(d), turn: turn(next).toLowerCase() });
         if (d <= ANNOUNCE_AHEAD_M) spoken.current.add(`ahead-${next.along}`);
       }
-      announce("start", `${rerouted.current ? "New route found." : `Starting your journey to ${destName}.`} ${first}`);
+      const opening = rerouted.current ? t("journey.sayNewRoute") : t("journey.sayStarting", { dest: destName });
+      announce("start", `${opening} ${first}`);
     }
     if (next && next.kind !== "arrive") {
       const d = next.along - loc.along;
-      const text = maneuverText(next, destName);
-      if (d <= ANNOUNCE_NOW_M) announce(`now-${next.along}`, `${text} now.`);
-      else if (d <= ANNOUNCE_AHEAD_M) announce(`ahead-${next.along}`, `In ${spokenDistance(d)}, ${text.toLowerCase()}.`);
+      const text = turn(next);
+      if (d <= ANNOUNCE_NOW_M) announce(`now-${next.along}`, t("journey.sayNow", { turn: text }));
+      else if (d <= ANNOUNCE_AHEAD_M) announce(`ahead-${next.along}`, t("journey.sayIn", { d: said(d), turn: text.toLowerCase() }));
     }
     const ob = path.barriers.find((b) => b.along > loc.along && b.along - loc.along <= OBSTACLE_AHEAD_M);
-    if (ob) announce(`ob-${ob.along}`, `Heads up. Obstacle in ${spokenDistance(ob.along - loc.along)}: ${ob.text}.`);
+    if (ob) announce(`ob-${ob.along}`, t("journey.sayObstacle", { d: said(ob.along - loc.along), text: ob.text }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fix, active, path]);
 
@@ -179,21 +184,23 @@ export function JourneyPanel({
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), [j.arrived]);
+  const { t, lang } = useT();
+  const turn = (m: Maneuver) => maneuverText(m, destName, lang);
 
   const remaining = Math.max(0, j.length - j.along);
   const mins = Math.max(1, Math.round(remaining / WALK_SPEED_MPS / 60));
-  const eta = new Date(Date.now() + (remaining / WALK_SPEED_MPS) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const eta = new Date(Date.now() + (remaining / WALK_SPEED_MPS) * 1000).toLocaleTimeString(LOCALE[lang], { hour: "2-digit", minute: "2-digit" });
 
   if (j.arrived) {
     return (
       <section className="journey-arrived card" aria-labelledby="arrived-heading">
         <Bee size={64} className="bee-hover" />
         <h1 id="arrived-heading" ref={headingRef} tabIndex={-1}>
-          You've arrived!
+          {t("journey.arrived")}
         </h1>
         <p>{destName}</p>
         <button type="button" className="primary big" onClick={onEnd}>
-          Done
+          {t("journey.done")}
         </button>
       </section>
     );
@@ -207,7 +214,7 @@ export function JourneyPanel({
           <div className="jb-main">
             <span className="spinner jb-spinner" aria-hidden="true" />
             <h1 id="journey-heading" ref={headingRef} tabIndex={-1} className="jb-text">
-              Finding you on the map…
+              {t("journey.finding")}
             </h1>
           </div>
         ) : (
@@ -219,7 +226,7 @@ export function JourneyPanel({
               <div>
                 <p className="jb-dist">{formatDistance(next.along - j.along)}</p>
                 <h1 id="journey-heading" ref={headingRef} tabIndex={-1} className="jb-text">
-                  {maneuverText(next, destName)}
+                  {turn(next)}
                 </h1>
               </div>
             </div>
@@ -227,7 +234,7 @@ export function JourneyPanel({
         )}
         {j.then && (
           <p className="jb-then">
-            Then <Icon name={MANEUVER_ICON[j.then.kind]} size={18} /> {maneuverText(j.then, destName).toLowerCase()}
+            {t("journey.then")} <Icon name={MANEUVER_ICON[j.then.kind]} size={18} /> {turn(j.then).toLowerCase()}
           </p>
         )}
       </section>
@@ -237,26 +244,30 @@ export function JourneyPanel({
           <Bee size={40} className="bee-wiggle" />
           <p>
             <strong className="bee-alert-title">
-              <Icon name="alert" size={18} /> Bzzt! Obstacle in {formatDistance(j.obstacle.along - j.along)}
+              <Icon name="alert" size={18} /> {t("journey.obstacleIn", { d: formatDistance(j.obstacle.along - j.along) })}
             </strong>
             <span>{j.obstacle.text}</span>
           </p>
         </div>
       )}
 
-      <section className="journey-bottom" aria-label="Trip">
+      <section className="journey-bottom" aria-label={t("journey.trip")}>
         {(j.rerouting || j.gpsError || (j.fix && j.fix.accuracy > POOR_ACCURACY_M)) && (
           <p className="hint journey-note" role="status">
             <Icon name="info" size={18} />{" "}
-            {j.rerouting ? "You've left the route. Finding a new one…" : j.gpsError ?? `Weak GPS signal (±${Math.round(j.fix!.accuracy)} m).`}
+            {j.rerouting
+              ? t("journey.leftRoute")
+              : j.gpsError
+                ? t(j.gpsError === "lost" ? "journey.gpsLost" : "journey.gpsDenied")
+                : t("journey.weakGps", { m: Math.round(j.fix!.accuracy) })}
           </p>
         )}
         <div className="journey-row">
           <p className="journey-eta">
-            <strong>{mins} min</strong>
-            <span>
-              {formatDistance(remaining)} · arrive {eta}
-            </span>
+            <strong>
+              {mins} {t("card.min")}
+            </strong>
+            <span>{t("journey.eta", { d: formatDistance(remaining), eta })}</span>
           </p>
           {voice.supported && (
             <button
@@ -264,13 +275,13 @@ export function JourneyPanel({
               className="secondary icon-only"
               onClick={voice.toggle}
               aria-pressed={!voice.muted}
-              aria-label={voice.muted ? "Voice directions off" : "Voice directions on"}
+              aria-label={t(voice.muted ? "journey.voiceOff" : "journey.voiceOn")}
             >
               <Icon name={voice.muted ? "mute" : "volume"} />
             </button>
           )}
           <button type="button" className="secondary" onClick={onEnd}>
-            <Icon name="x" size={18} /> End
+            <Icon name="x" size={18} /> {t("journey.end")}
           </button>
         </div>
         {/* Screen readers hear the same instructions as the voice. */}

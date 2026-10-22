@@ -1,28 +1,26 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { LOCATION_MESSAGE, useLocation } from "../hooks/useLocation";
-import { SPEECH_LANGS, useSpeechInput } from "../hooks/useSpeechInput";
-import { useAccount } from "../hooks/useAccount";
-import { speechLangFor } from "../account";
+import { CATEGORIES } from "../config";
+import { useLocation } from "../hooks/useLocation";
+import { useT, type TKey } from "../i18n";
 import { takePhoto } from "../nativeCamera";
 import { isNative } from "../platform";
-import type { Analysis, Report } from "../types";
+import type { AISuggestion, Analysis, Report } from "../types";
 import { Icon } from "../components/Icon";
 
-// Tap-to-add starters for the description. They only add text; the AI (then staff) decide the category.
-const QUICK_PICKS = [
-  { label: "Broken kerb", text: "Broken kerb." },
-  { label: "Steps, no ramp", text: "Steps with no ramp." },
-  { label: "Path blocked", text: "Something is blocking the path." },
-  { label: "Broken paving", text: "Broken or uneven paving." },
-  { label: "Steep slope", text: "Very steep slope." },
-  { label: "No safe crossing", text: "No safe place to cross." },
-];
+// Tap-to-add starters for the description, in the app language. They only add text; the AI decides the category.
+const QUICK_PICKS = ["kerb", "steps", "blocked", "paving", "slope", "crossing"] as const;
 
 function toggleSnippet(text: string, snippet: string): string {
   if (text.includes(snippet)) return text.replace(snippet, "").replace(/\s{2,}/g, " ").trim();
   return text.trim() ? `${text.trim()} ${snippet}` : snippet;
+}
+
+/** "High kerb" / "Kerb tinggi"; categories the app doesn't know are shown as the AI sent them. */
+function useCategoryLabel() {
+  const { t } = useT();
+  return (id: string) => (CATEGORIES.some((c) => c.id === id) ? t(`cat.${id}` as TKey) : id.replaceAll("_", " "));
 }
 
 export function ReportPage() {
@@ -35,6 +33,7 @@ export function ReportPage() {
 }
 
 function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
+  const { t } = useT();
   const [text, setText] = useState("");
   const [photo, setPhotoState] = useState<File | null>(null);
   // Uploaded copy of `photo`, so analysing and sending don't upload twice.
@@ -84,7 +83,7 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!photo && !hasText) {
-      setError("Add a photo or a short description first.");
+      setError(t("report.needPhotoOrText"));
       return;
     }
     setSubmitting(true);
@@ -94,7 +93,7 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
       const [[lat, lng], photo_url] = await Promise.all([location.locate(), ensureUploaded()]);
       onCreated(await api.createReport({ photo_url, text, lat, lng, analysis_id: analysis?.analysis_id ?? null }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(t("report.couldNotSend", { error: err instanceof Error ? err.message : t("report.wentWrong") }));
     } finally {
       setSubmitting(false);
     }
@@ -103,19 +102,19 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
   return (
     <form onSubmit={submit} aria-labelledby="report-heading" className="report">
       <header className="page-header">
-        <h1 id="report-heading">Report a barrier</h1>
-        <p>Snap a photo of the steps, broken kerb or blocked path. Our AI describes and checks it, and staff fix it.</p>
+        <h1 id="report-heading">{t("report.title")}</h1>
+        <p>{t("report.lead")}</p>
       </header>
 
-      <ol className="stepper" aria-label="Progress">
-        <StepDot n={1} label="Photo" done={photo !== null} />
-        <StepDot n={2} label="Details" done={analysis !== null || hasText} optional={photo !== null} />
-        <StepDot n={3} label="Send" done={false} />
+      <ol className="stepper" aria-label={t("setup.progress")}>
+        <StepDot n={1} label={t("report.stepPhoto")} done={photo !== null} />
+        <StepDot n={2} label={t("report.stepDetails")} done={analysis !== null || hasText} optional={photo !== null} />
+        <StepDot n={3} label={t("report.stepSend")} done={false} />
       </ol>
 
       <section className="card step" aria-labelledby="step-photo">
         <h2 id="step-photo">
-          <span className="step-num" aria-hidden="true">1</span> Photo
+          <span className="step-num" aria-hidden="true">1</span> {t("report.stepPhoto")}
         </h2>
         <PhotoPicker photo={photo} onPhoto={setPhoto} />
         {photo && (
@@ -126,18 +125,18 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
               <button type="button" className="primary big" onClick={analyse} disabled={analysing}>
                 {analysing ? (
                   <>
-                    <span className="spinner" aria-hidden="true" /> Looking at your photo…
+                    <span className="spinner" aria-hidden="true" /> {t("report.analysing")}
                   </>
                 ) : (
                   <>
-                    <Icon name="sparkle" /> Analyse with AI
+                    <Icon name="sparkle" /> {t("report.analyse")}
                   </>
                 )}
               </button>
             )}
             {analyseError && (
               <p className="notice notice-warn" role="alert">
-                The AI couldn't look at your photo right now. You can still send the report: staff will check the photo.
+                {t("report.analyseFailed")}
               </p>
             )}
           </div>
@@ -149,37 +148,29 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
           <span className="step-num" aria-hidden="true">2</span>{" "}
           {photo ? (
             <>
-              Add details <span className="optional">(optional)</span>
+              {t("report.addDetails")} <span className="optional">{t("setup.optional")}</span>
             </>
           ) : (
-            "What's the problem?"
+            t("report.whatsProblem")
           )}
         </h2>
-        {photo && (
-          <p className="hint step-hint">
-            {analysis ? "Anything the AI missed? Add it here." : "Not needed with a photo, but it can help."}
-          </p>
-        )}
+        {photo && <p className="hint step-hint">{t(analysis ? "report.missed" : "report.notNeeded")}</p>}
         <QuickPicks text={text} setText={setText} />
         <Describe text={text} setText={setText} required={!photo} />
       </section>
 
       <section className="card step" aria-labelledby="step-location">
         <h2 id="step-location">
-          <span className="step-num" aria-hidden="true">3</span> Location
+          <span className="step-num" aria-hidden="true">3</span> {t("report.stepLocation")}
         </h2>
         <div className="location-line">
           <span className="location-icon">
             <Icon name="pin" size={20} />
           </span>
-          <p>
-            {location.status === "idle"
-              ? "We'll use your current location when you send. Stand near the problem if you can."
-              : LOCATION_MESSAGE[location.status]}
-          </p>
+          <p>{location.status === "idle" ? t("report.locationIdle") : t(`loc.${location.status}`)}</p>
           {(location.status === "unavailable" || location.status === "off_campus") && (
             <button type="button" className="secondary small" onClick={() => location.locate()}>
-              <Icon name="refresh" size={18} /> Try again
+              <Icon name="refresh" size={18} /> {t("nav.tryAgain")}
             </button>
           )}
         </div>
@@ -188,17 +179,17 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
       <div className="submit-bar">
         {error && (
           <p className="notice notice-error" role="alert">
-            Could not send the report: {error}
+            {error}
           </p>
         )}
         <button type="submit" className="primary big" disabled={submitting || analysing}>
           {submitting ? (
             <>
               <span className="spinner" aria-hidden="true" />{" "}
-              {analysis && !analysisStale ? "Sending…" : "Reading your report…"}
+              {t(analysis && !analysisStale ? "report.sending" : "report.reading")}
             </>
           ) : (
-            "Send report"
+            t("report.send")
           )}
         </button>
       </div>
@@ -206,60 +197,74 @@ function ReportForm({ onCreated }: { onCreated: (r: Report) => void }) {
   );
 }
 
-const CONFIDENCE_TEXT = { high: "AI is fairly sure", medium: "AI is somewhat sure", low: "AI is not sure" } as const;
+/** Category + severity line for an AI answer. */
+function CategoryLine({ ai }: { ai: AISuggestion }) {
+  const { t } = useT();
+  const label = useCategoryLabel();
+  return (
+    <p className="ai-category">
+      {label(ai.category)} <span className={`pill pill-${ai.severity}`}>{t("report.severity", { s: t(`sev.${ai.severity}`) })}</span>
+    </p>
+  );
+}
 
-/** What the AI thinks the photo shows. Always framed as a suggestion that staff will check. */
+/** The AI's summary is written in English; say so when the app is in Malay. */
+function Summary({ text }: { text: string }) {
+  const { t, lang } = useT();
+  return (
+    <p>
+      {lang === "ms" && <span className="muted small-text summary-note">{t("report.summaryEnglish")} </span>}
+      <span lang="en">{text}</span>
+    </p>
+  );
+}
+
+/** What the AI thinks the photo shows, before sending. */
 function AnalysisCard({ analysis, stale }: { analysis: Analysis; stale: boolean }) {
+  const { t } = useT();
   const { ai, ai_source } = analysis;
   if (ai_source === "fallback") {
-    return (
-      <p className="notice notice-warn">
-        We couldn't analyse the photo right now. Add a few words below if you can, or just send it. Staff will look at it.
-      </p>
-    );
+    return <p className="notice notice-warn">{t("report.aiFallback")}</p>;
   }
+  const barrier = ai.is_accessibility_barrier && ai.category !== "not_a_barrier";
   return (
     <div className="ai-card ai-preview">
       <p className="ai-label">
-        <Icon name="sparkle" size={18} /> AI suggestion{ai_source === "simulated" && " (sample, server offline)"}
+        <Icon name="sparkle" size={18} /> {t("report.aiSuggestion")}
+        {ai_source === "simulated" && t("report.sampleOffline")}
       </p>
-      {ai.is_accessibility_barrier ? (
-        <p className="ai-category">
-          {ai.category.replaceAll("_", " ")}{" "}
-          <span className={`pill pill-${ai.severity}`}>{ai.severity} severity</span>
-        </p>
-      ) : (
-        <p className="ai-category">Doesn't look like a barrier</p>
-      )}
-      <p>{ai.summary_en}</p>
+      {barrier ? <CategoryLine ai={ai} /> : <p className="ai-category">{t("report.notBarrier")}</p>}
+      <Summary text={ai.summary_en} />
       {ai.affects.length > 0 && (
-        <p className="muted small-text">Affects: {ai.affects.map((a) => a.replaceAll("_", " ")).join(", ")}</p>
+        <p className="muted small-text">
+          {t("report.affects", { list: ai.affects.map((a) => t(`affect.${a}` as TKey)).join(", ") })}
+        </p>
       )}
-      <p className="muted small-text">{CONFIDENCE_TEXT[ai.confidence]}</p>
+      <p className="muted small-text">{t(`report.conf.${ai.confidence}`)}</p>
       {ai.privacy_flag && (
         <p className="hint">
-          <Icon name="shield" size={16} /> It may show a face or number plate. Staff blur these before anyone else sees it.
+          <Icon name="shield" size={16} /> {t("report.privacy")}
         </p>
       )}
       {ai.possible_duplicate_of && (
         <p className="hint">
-          <Icon name="info" size={16} /> Someone may have reported this already. Send it anyway: it helps staff prioritise.
+          <Icon name="info" size={16} /> {t("report.duplicate")}
         </p>
       )}
-      {!ai.is_accessibility_barrier && (
+      {!barrier && (
         <p className="hint">
-          <Icon name="info" size={16} /> If we got it wrong, say what the problem is below.
+          <Icon name="info" size={16} /> {t("report.gotWrong")} {!stale && t("report.willAutoReject")}
         </p>
       )}
       <p className="hint">
-        <Icon name="info" size={16} />{" "}
-        {stale ? "You added details, so the AI will read them too when you send." : "If it's clear, the AI confirms it when you send. Otherwise staff check it."}
+        <Icon name="info" size={16} /> {t(stale ? "report.stale" : "report.willConfirm")}
       </p>
     </div>
   );
 }
 
 function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File | null) => void }) {
+  const { t } = useT();
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -276,16 +281,16 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
       const file = await takePhoto();
       if (file) onPhoto(file);
     } catch {
-      setError("Couldn't open the camera. Check the app's permissions in Settings.");
+      setError(t("report.cameraError"));
     }
   }
 
   if (preview) {
     return (
       <div className="photo-chosen">
-        <img src={preview} alt="The photo you are about to send" />
+        <img src={preview} alt={t("report.previewAlt")} />
         <button type="button" className="secondary" onClick={() => onPhoto(null)}>
-          Retake photo
+          {t("report.retake")}
         </button>
       </div>
     );
@@ -298,14 +303,14 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
           <span className="dropzone-icon">
             <Icon name="camera" size={34} />
           </span>
-          Take a photo
+          {t("report.take")}
         </button>
       ) : (
         <label className="dropzone">
           <span className="dropzone-icon">
             <Icon name="camera" size={34} />
           </span>
-          Take a photo
+          {t("report.take")}
           <input
             className="visually-hidden"
             type="file"
@@ -315,7 +320,7 @@ function PhotoPicker({ photo, onPhoto }: { photo: File | null; onPhoto: (f: File
           />
         </label>
       )}
-      <p className="hint">A photo is often enough: the AI can describe it for you. Avoid faces and number plates.</p>
+      <p className="hint">{t("report.photoHint")}</p>
       {error && (
         <p className="notice notice-error" role="alert">
           {error}
@@ -334,15 +339,11 @@ function Describe({
   setText: (fn: (prev: string) => string) => void;
   required: boolean;
 }) {
-  const { profile } = useAccount();
-  const [speechLang, setSpeechLang] = useState<string>(speechLangFor(profile?.language) ?? SPEECH_LANGS[0].code);
-  const appendText = useCallback((t: string) => setText((prev) => (prev ? `${prev} ${t}` : t)), [setText]);
-  const speech = useSpeechInput(appendText);
-
+  const { t } = useT();
   return (
     <>
       <label htmlFor="desc" className="visually-hidden">
-        Describe the problem
+        {t("report.describe")}
       </label>
       <textarea
         id="desc"
@@ -350,51 +351,18 @@ function Describe({
         onChange={(e) => setText(() => e.target.value)}
         rows={4}
         required={required}
-        placeholder="e.g. Kerb tepi jalan pecah, susah untuk kerusi roda"
+        placeholder={t("report.placeholder")}
       />
-      <p className="hint">Bahasa Malaysia, English, 中文 or தமிழ் are all fine.</p>
-      {speech.supported && (
-        <div className="voice-row">
-          <label htmlFor="speech-lang" className="visually-hidden">
-            Language to speak in
-          </label>
-          <select id="speech-lang" value={speechLang} onChange={(e) => setSpeechLang(e.target.value)}>
-            {SPEECH_LANGS.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={speech.listening ? "primary mic listening" : "secondary mic"}
-            aria-pressed={speech.listening}
-            onClick={() => (speech.listening ? speech.stop() : speech.start(speechLang))}
-          >
-            {speech.listening ? (
-              <>
-                <Icon name="stop" size={18} /> Listening… tap to stop
-              </>
-            ) : (
-              <>
-                <Icon name="mic" size={20} /> Speak
-              </>
-            )}
-          </button>
-        </div>
-      )}
-      {speech.error && (
-        <p className="notice notice-error" role="alert">
-          Voice input: {speech.error}
-        </p>
-      )}
+      <p className="hint">{t("report.langHint")}</p>
     </>
   );
 }
 
 function Submitted({ report, onAnother }: { report: Report; onAnother: () => void }) {
+  const { t } = useT();
   const fallback = report.ai_source === "fallback";
   const confirmed = report.status === "verified";
+  const autoRejected = report.status === "rejected" && report.rejected_by === "ai";
   const [copied, setCopied] = useState(false);
 
   async function copyRef() {
@@ -406,68 +374,71 @@ function Submitted({ report, onAnother }: { report: Report; onAnother: () => voi
     }
   }
 
+  const first = confirmed
+    ? { strong: t("sent.sentConfirmed"), rest: t("sent.confirmedRest") }
+    : { strong: t("sent.sent"), rest: t(autoRejected ? "sent.rejectedRest" : "sent.unverifiedRest") };
+  const second = confirmed
+    ? { strong: t("sent.staffFix"), rest: t("sent.staffFixRest") }
+    : autoRejected
+      ? { strong: t("sent.staffReopen"), rest: t("sent.staffReopenRest") }
+      : { strong: t("sent.staffCheck"), rest: t("sent.staffCheckRest") };
+
   return (
     <section className="submitted" aria-labelledby="sent-heading" aria-live="polite">
       <div className="success-mark">
         <Icon name="check" size={40} />
       </div>
-      <h1 id="sent-heading">Thanks, your report is in</h1>
+      <h1 id="sent-heading">{t("sent.thanks")}</h1>
       <p className="ref">
-        Your reference{" "}
+        {t("sent.yourRef")}{" "}
         <button type="button" className="ref-chip" onClick={copyRef}>
           <strong>{report.reference_number}</strong> <Icon name="copy" size={16} />
-          <span className="visually-hidden">Copy reference number</span>
+          <span className="visually-hidden">{t("sent.copyRef")}</span>
         </button>
       </p>
       <p className="hint" role="status">
-        {copied ? "Copied." : ""}
+        {copied ? t("sent.copied") : ""}
       </p>
 
-      <ol className="timeline" aria-label="What happens next">
+      <ol className="timeline" aria-label={t("sent.next")}>
         <li className="done">
           <span className="tl-dot">
             <Icon name="check" size={16} />
           </span>
           <span>
-            {confirmed ? (
-              <><strong>Sent and confirmed by the AI</strong> — routes now avoid it</>
-            ) : (
-              <><strong>Sent</strong> — shown as <em>Unverified</em> on the map</>
-            )}
+            <strong>{first.strong}</strong>
+            {first.rest}
           </span>
         </li>
         <li>
           <span className="tl-dot">2</span>
           <span>
-            {confirmed ? (
-              <><strong>Staff fix it</strong> or correct it if the AI got it wrong</>
-            ) : (
-              <><strong>Staff check it</strong> and confirm or correct the details</>
-            )}
+            <strong>{second.strong}</strong>
+            {second.rest}
           </span>
         </li>
-        <li>
-          <span className="tl-dot">3</span>
-          <span>
-            <strong>Fixed</strong> — routes update for everyone
-          </span>
-        </li>
+        {!autoRejected && (
+          <li>
+            <span className="tl-dot">3</span>
+            <span>
+              <strong>{t("sent.fixed")}</strong>
+              {t("sent.fixedRest")}
+            </span>
+          </li>
+        )}
       </ol>
 
       <div className="card ai-card">
-        <h2>{fallback ? "Waiting for staff" : "What we think it is"}</h2>
+        <h2>{t(fallback ? "sent.waiting" : "sent.whatWeThink")}</h2>
         {fallback ? (
-          <p>We couldn't categorise it automatically. Staff will review it.</p>
+          <p>{t("sent.couldntCategorise")}</p>
         ) : (
           <>
-            <p className="ai-category">
-              {report.ai.category.replaceAll("_", " ")}{" "}
-              <span className={`pill pill-${report.ai.severity}`}>{report.ai.severity} severity</span>
-            </p>
-            <p>{report.ai.summary_en}</p>
+            {autoRejected ? <p className="ai-category">{t("report.notBarrier")}</p> : <CategoryLine ai={report.ai} />}
+            <Summary text={report.ai.summary_en} />
             <p className="hint">
               <Icon name="info" size={16} />{" "}
-              {confirmed ? "The AI confirmed this. Staff can still correct it." : "This is an AI suggestion. Staff confirm or correct it."}
+              {t(confirmed ? "sent.aiConfirmed" : autoRejected ? "sent.aiRejected" : "sent.aiSuggestion")}
             </p>
           </>
         )}
@@ -475,10 +446,10 @@ function Submitted({ report, onAnother }: { report: Report; onAnother: () => voi
 
       <div className="button-row">
         <Link to="/" className="button primary">
-          <Icon name="map" /> See the map
+          <Icon name="map" /> {t("sent.seeMap")}
         </Link>
         <button type="button" className="secondary" onClick={onAnother}>
-          Report another
+          {t("sent.another")}
         </button>
       </div>
     </section>
@@ -486,32 +457,35 @@ function Submitted({ report, onAnother }: { report: Report; onAnother: () => voi
 }
 
 function StepDot({ n, label, done, optional = false }: { n: number; label: string; done: boolean; optional?: boolean }) {
+  const { t } = useT();
   return (
     <li className={done ? "done" : undefined}>
       <span className="stepper-dot">{done ? <Icon name="check" size={16} /> : n}</span>
       <span>
         {label}
-        {optional && <span className="visually-hidden"> (optional)</span>}
-        {done && <span className="visually-hidden"> — done</span>}
+        {optional && <span className="visually-hidden">{t("report.optionalSr")}</span>}
+        {done && <span className="visually-hidden">{t("setup.done")}</span>}
       </span>
     </li>
   );
 }
 
 function QuickPicks({ text, setText }: { text: string; setText: (fn: (prev: string) => string) => void }) {
+  const { t } = useT();
   return (
-    <div className="quick-picks" role="group" aria-label="Quick add a common problem">
+    <div className="quick-picks" role="group" aria-label={t("report.quickGroup")}>
       {QUICK_PICKS.map((q) => {
-        const added = text.includes(q.text);
+        const snippet = t(`quick.${q}.text`);
+        const added = text.includes(snippet);
         return (
           <button
-            key={q.label}
+            key={q}
             type="button"
             className="quick"
             aria-pressed={added}
-            onClick={() => setText((prev) => toggleSnippet(prev, q.text))}
+            onClick={() => setText((prev) => toggleSnippet(prev, snippet))}
           >
-            {added && <Icon name="check" size={16} />} {q.label}
+            {added && <Icon name="check" size={16} />} {t(`quick.${q}.label`)}
           </button>
         );
       })}

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { LANGUAGES, type Language } from "../account";
 
 const MUTE_KEY = "beeable.voiceMuted";
 const supported = typeof window !== "undefined" && "speechSynthesis" in window;
 
-/** Spoken directions with the device's built-in voice. Mute is remembered on this device. */
-export function useVoice() {
+/** Spoken directions with the device's built-in voice, in `lang`. Mute is remembered on this device. */
+export function useVoice(lang: Language = "en") {
   const [muted, setMuted] = useState(() => {
     try {
       return localStorage.getItem(MUTE_KEY) === "1";
@@ -18,11 +19,11 @@ export function useVoice() {
       if (!supported || muted) return;
       window.speechSynthesis.cancel(); // newest instruction wins
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-GB";
+      u.lang = LANGUAGES.find((l) => l.id === lang)?.speech ?? "en-GB";
       u.rate = 1;
       window.speechSynthesis.speak(u);
     },
-    [muted],
+    [muted, lang],
   );
 
   function toggle() {

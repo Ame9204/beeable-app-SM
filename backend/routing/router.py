@@ -11,9 +11,10 @@ from pathlib import Path
 import networkx as nx
 
 from config import (
-    CRITICALITY_SAMPLE_NODES, EDGE_OVERRIDES_PATH, GRAPH_PATH, LEAST_BAD_MULTIPLIER, MAX_SNAP_M, POIS, Profile,
+    ALT_MAX_DETOUR, ALT_MAX_SHARED, ALT_REUSE_PENALTY, CRITICALITY_SAMPLE_NODES, EDGE_OVERRIDES_PATH, GRAPH_PATH,
+    LEAST_BAD_MULTIPLIER, MAX_SNAP_M, POIS, Language, Profile,
 )
-from routing.explain import PathSummary, explain
+from routing.explain import PathSummary, explain, explain_alternative
 from routing.weights import EdgeAttrs, ReportEffect, edge_cost
 
 log = logging.getLogger("beeable.routing")
@@ -113,7 +114,7 @@ class CampusGraph:
             s.barriers += [(p, length) for p in ps if p.is_barrier]
         return s
 
-    def _geojson(self, path: list[str], profile: Profile, effects: Effects) -> dict:
+    def _geojson(self, path: list[str], profile: Profile, effects: Effects, lang: Language = "en") -> dict:
         features = []
         for u, v in zip(path, path[1:]):
             d = self.G[u][v]
@@ -129,7 +130,7 @@ class CampusGraph:
                 "impassable": cost is None,
             }
             if barriers:
-                props["barrier"] = "; ".join(p.label for p in barriers)
+                props["barrier"] = "; ".join(p.label_in(lang) for p in barriers)
                 props["barrier_verified"] = any(p.key.startswith("verified") for p in barriers)
             if "name" in e["tags"]:
                 props["name"] = e["tags"]["name"]
@@ -146,8 +147,40 @@ class CampusGraph:
             raise OffNetworkError(f"`{name}` is {d:.0f} m from the nearest mapped path (max {MAX_SNAP_M} m)")
         return node
 
+    def _alternative(
+        self, s: str, t: str, best: PathSummary, profile: Profile, effects: Effects, least_bad: bool
+    ) -> tuple[list[str], PathSummary] | None:
+        """Next-best route for the profile that mostly takes a different way, or None if there isn't one."""
+        on_best = set(best.edge_ids)
+        base = self._weight(profile, effects, least_bad)
+
+        def w(u, v, d) -> float | None:
+            cost = base(u, v, d)
+            return None if cost is None else cost * (ALT_REUSE_PENALTY if d["id"] in on_best else 1)
+
+        try:
+            path = nx.shortest_path(self.G, s, t, weight=w)
+        except nx.NetworkXNoPath:
+            return None
+        alt = self._summarise(path, profile, effects)
+        if alt.edge_ids == best.edge_ids or not alt.length_m:
+            return None
+        shared = sum(self.edges[e]["attrs"].length_m for e in alt.edge_ids if e in on_best) / alt.length_m
+        if shared > ALT_MAX_SHARED or alt.length_m > best.length_m * ALT_MAX_DETOUR:
+            return None
+        return path, alt
+
+    def _surveyed_share(self, p: PathSummary) -> float:
+        surveyed_m = sum(self.edges[e]["attrs"].length_m for e in p.edge_ids if self.edges[e]["attrs"].source == "surveyed")
+        return round(surveyed_m / p.length_m, 3) if p.length_m else 0.0
+
     def route(
-        self, origin: tuple[float, float], dest: tuple[float, float], profile: Profile, effects: Effects
+        self,
+        origin: tuple[float, float],
+        dest: tuple[float, float],
+        profile: Profile,
+        effects: Effects,
+        lang: Language = "en",
     ) -> dict:
         s, t = self._snap(origin, "from"), self._snap(dest, "to")
         shortest = nx.shortest_path(self.G, s, t, weight=lambda _u, _v, d: d["attrs"].length_m)
@@ -168,16 +201,26 @@ class CampusGraph:
                 "unknown_m": round(p.unknown_m),
             }
             if p.blocking:
-                info["blocked_by"] = p.blocking[0][0].label
+                info["blocked_by"] = p.blocking[0][0].label_in(lang)
             return info
 
-        surveyed_m = sum(self.edges[e]["attrs"].length_m for e in be.edge_ids if self.edges[e]["attrs"].source == "surveyed")
+        found = self._alternative(s, t, be, profile, effects, least_bad)
+        alternative = None
+        if found:
+            alt_path, alt = found
+            alternative = {
+                "route": self._geojson(alt_path, profile, effects, lang),
+                "costs": cost_info(alt),
+                "explanation": explain_alternative(be, alt, profile, lang),
+                "surveyed_share": self._surveyed_share(alt),
+            }
         return {
-            "shortest": self._geojson(shortest, profile, effects),
-            "recommended": self._geojson(best, profile, effects),
+            "shortest": self._geojson(shortest, profile, effects, lang),
+            "recommended": self._geojson(best, profile, effects, lang),
             "costs": {"profile": profile, "shortest": cost_info(sh), "recommended": {**cost_info(be), "least_bad": least_bad}},
-            "explanation": explain(sh, be, profile, least_bad),
-            "surveyed_share": round(surveyed_m / be.length_m, 3) if be.length_m else 0.0,
+            "explanation": explain(sh, be, profile, least_bad, lang),
+            "surveyed_share": self._surveyed_share(be),
+            "alternative": alternative,
         }
 
     # --- priority inputs ------------------------------------------------------------------------

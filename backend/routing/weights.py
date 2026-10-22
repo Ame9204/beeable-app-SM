@@ -5,7 +5,7 @@ Pure functions only. Each penalty is returned with a label so explanations use t
 
 from dataclasses import dataclass
 
-from config import ROUTING_PENALTIES, VERIFIED_REPORT_PENALTY, DataSource, Profile
+from config import ROUTING_PENALTIES, VERIFIED_REPORT_PENALTY, DataSource, Language, Profile
 
 LABELS = {
     "verified_steps": "steps with no ramp (verified)",
@@ -17,6 +17,17 @@ LABELS = {
     "attribute_unknown": "conditions not yet surveyed",
     "verified_kerb_barrier": "a high kerb or missing ramp (verified)",
     "verified_other_barrier": "a verified barrier",
+}
+LABELS_MS = {
+    "verified_steps": "tangga tanpa ramp (disahkan)",
+    "unverified_steps": "tangga (belum disahkan)",
+    "open_unverified_report": "laporan halangan yang belum disahkan",
+    "slope_5_8": "cerun 5–8%",
+    "slope_over_8": "cerun lebih curam daripada 8%",
+    "no_shade": "tiada teduhan",
+    "attribute_unknown": "keadaan yang belum ditinjau",
+    "verified_kerb_barrier": "kerb tinggi atau tiada ramp (disahkan)",
+    "verified_other_barrier": "halangan yang disahkan",
 }
 
 
@@ -46,6 +57,9 @@ class Penalty:
     @property
     def label(self) -> str:
         return LABELS[self.key]
+
+    def label_in(self, lang: Language) -> str:
+        return (LABELS_MS if lang == "ms" else LABELS)[self.key]
 
     @property
     def is_barrier(self) -> bool:

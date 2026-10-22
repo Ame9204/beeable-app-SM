@@ -5,17 +5,20 @@ import { Icon, NEED_ICON } from "../components/Icon";
 import { ProfilePicker } from "../components/ProfilePicker";
 import { useAccount } from "../hooks/useAccount";
 import { useFocusHeading } from "../hooks/useFocusHeading";
+import { useT, type TKey } from "../i18n";
 import type { Profile } from "../types";
 
-const STEPS = ["About you", "Getting around", "Anything else"] as const;
+const STEPS: TKey[] = ["setup.step1", "setup.step2", "setup.step3"];
 
 export function ProfileSetup() {
-  const { account, profile, session } = useAccount();
+  const { account, profile, session, language: appLanguage } = useAccount();
   const navigate = useNavigate();
   const editing = profile !== null;
   const [step, setStep] = useState(0);
   const [name, setName] = useState(profile?.name ?? account?.name ?? "");
-  const [language, setLanguage] = useState<Language>(profile?.language ?? "ms");
+  const [language, setLanguage] = useState<Language>(profile?.language ?? appLanguage);
+  // Show the setup screens in the language being picked, so the switch is visible straight away.
+  const { t } = useT(language);
   const [mobility, setMobility] = useState<Profile>(profile?.mobility ?? "step_free");
   const [needs, setNeeds] = useState<Need[]>(profile?.needs ?? []);
   const heading = useFocusHeading(step);
@@ -40,23 +43,23 @@ export function ProfileSetup() {
     <div className="onboard">
       <div className="onboard-top">
         {step > 0 ? (
-          <button type="button" className="icon-button" onClick={() => setStep((s) => s - 1)} aria-label="Previous step">
+          <button type="button" className="icon-button" onClick={() => setStep((s) => s - 1)} aria-label={t("setup.prev")}>
             <Icon name="arrowLeft" />
           </button>
         ) : editing ? (
-          <button type="button" className="icon-button" onClick={() => navigate(-1)} aria-label="Cancel and go back">
+          <button type="button" className="icon-button" onClick={() => navigate(-1)} aria-label={t("setup.cancel")}>
             <Icon name="x" />
           </button>
         ) : (
           <span />
         )}
         <span className="muted small-text">
-          Step {step + 1} of {STEPS.length}
+          {t("setup.stepOf", { n: step + 1, total: STEPS.length })}
         </span>
       </div>
 
       <form className="onboard-body" onSubmit={next}>
-        <ol className="stepper" aria-label="Progress">
+        <ol className="stepper" aria-label={t("setup.progress")}>
           {STEPS.map((label, i) => (
             <li
               key={label}
@@ -65,8 +68,8 @@ export function ProfileSetup() {
             >
               <span className="stepper-dot">{i < step ? <Icon name="check" size={16} /> : i + 1}</span>
               <span className="stepper-label">
-                {label}
-                {i < step && <span className="visually-hidden"> — done</span>}
+                {t(label)}
+                {i < step && <span className="visually-hidden">{t("setup.done")}</span>}
               </span>
             </li>
           ))}
@@ -75,18 +78,24 @@ export function ProfileSetup() {
         {step === 0 && (
           <>
             <h1 ref={heading} tabIndex={-1}>
-              {editing ? "Your profile" : session === "guest" ? "Let's set you up" : `Hi${name ? `, ${name.split(" ")[0]}` : ""}!`}
+              {editing
+                ? t("setup.yourProfile")
+                : session === "guest"
+                  ? t("setup.guestHello")
+                  : name
+                    ? t("setup.helloName", { name: name.split(" ")[0] })
+                    : t("setup.hello")}
             </h1>
-            <p className="muted">This helps BeeAble pick routes and talk to you in your language.</p>
+            <p className="muted">{t("setup.lead")}</p>
             <div className="field">
               <label htmlFor="setup-name">
-                What should we call you? <span className="optional">(optional)</span>
+                {t("setup.nameLabel")} <span className="optional">{t("setup.optional")}</span>
               </label>
               <input id="setup-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" />
             </div>
             <fieldset className="choice-grid">
               <legend>
-                <Icon name="globe" size={20} /> Preferred language
+                <Icon name="globe" size={20} /> {t("setup.language")}
               </legend>
               {LANGUAGES.map((l) => (
                 <label key={l.id} className="choice">
@@ -106,19 +115,19 @@ export function ProfileSetup() {
                 </label>
               ))}
             </fieldset>
-            <p className="hint">Used as the default for voice reports. You can still type in any language.</p>
+            <p className="hint">{t("setup.languageHint")}</p>
           </>
         )}
 
         {step === 1 && (
           <>
             <h1 ref={heading} tabIndex={-1}>
-              How do you get around?
+              {t("setup.moveTitle")}
             </h1>
-            <p className="muted">We'll use this for your routes. You can switch any time on the map.</p>
-            <ProfilePicker profile={mobility} onChange={setMobility} legend="Route type" />
+            <p className="muted">{t("setup.moveLead")}</p>
+            <ProfilePicker profile={mobility} onChange={setMobility} legend={t("setup.routeType")} lang={language} />
             <p className="hint">
-              <Icon name="info" size={18} /> We never call a route "accessible". We show what's been checked and what hasn't.
+              <Icon name="info" size={18} /> {t("setup.neverAccessible")}
             </p>
           </>
         )}
@@ -126,21 +135,21 @@ export function ProfileSetup() {
         {step === 2 && (
           <>
             <h1 ref={heading} tabIndex={-1}>
-              Anything else we should know?
+              {t("setup.elseTitle")}
             </h1>
-            <p className="muted">Optional. Pick any that apply.</p>
+            <p className="muted">{t("setup.elseLead")}</p>
             <fieldset className="need-list">
-              <legend className="visually-hidden">Needs</legend>
+              <legend className="visually-hidden">{t("setup.needs")}</legend>
               {NEEDS.map((n) => (
-                <label key={n.id} className="check-card">
-                  <input type="checkbox" checked={needs.includes(n.id)} onChange={() => toggleNeed(n.id)} />
+                <label key={n} className="check-card">
+                  <input type="checkbox" checked={needs.includes(n)} onChange={() => toggleNeed(n)} />
                   <span className="check-card-body">
                     <span className="value-icon">
-                      <Icon name={NEED_ICON[n.id]} />
+                      <Icon name={NEED_ICON[n]} />
                     </span>
                     <span className="check-card-text">
-                      <strong>{n.label}</strong>
-                      <span className="muted">{n.hint}</span>
+                      <strong>{t(`need.${n}.label`)}</strong>
+                      <span className="muted">{t(`need.${n}.hint`)}</span>
                     </span>
                     <span className="check-box" aria-hidden="true">
                       <Icon name="check" size={16} />
@@ -154,7 +163,7 @@ export function ProfileSetup() {
 
         <div className="submit-bar onboard-actions">
           <button type="submit" className="primary big">
-            {last ? (editing ? "Save profile" : "Start exploring") : "Next"}
+            {t(last ? (editing ? "setup.save" : "setup.start") : "setup.next")}
             {!last && <Icon name="chevronRight" />}
           </button>
         </div>

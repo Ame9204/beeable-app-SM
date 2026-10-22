@@ -20,3 +20,12 @@ def test_doubtful_reports_go_to_staff():
     assert not ai_confirms(CLEAR.model_copy(update={"possible_duplicate_of": "r-001"}), "live", [])
     assert not ai_confirms(CLEAR, "live", [SimpleNamespace(match="likely")])
     assert ai_confirms(CLEAR, "live", [SimpleNamespace(match="possible")])
+
+
+def test_non_barriers_are_auto_rejected():
+    from intake.confirm import ai_rejects
+
+    assert ai_rejects(CLEAR.model_copy(update={"category": "not_a_barrier"}), "live")
+    assert ai_rejects(CLEAR.model_copy(update={"is_accessibility_barrier": False}), "cached")
+    assert not ai_rejects(CLEAR, "live")
+    assert not ai_rejects(CLEAR.model_copy(update={"category": "not_a_barrier"}), "fallback")

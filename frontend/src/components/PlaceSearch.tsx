@@ -1,11 +1,13 @@
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { distanceM } from "../hooks/useLocation";
-import { PLACE_TYPE_LABEL, keyPlaces, recentPlaces, searchPlaces, type Place } from "../places";
+import { useT } from "../i18n";
+import { keyPlaces, recentPlaces, searchPlaces, type Place } from "../places";
 import { Icon, POI_ICON } from "./Icon";
 
 interface Group {
   label: string;
   places: Place[];
+  recent?: boolean;
 }
 
 /**
@@ -23,16 +25,17 @@ export function PlaceSearch({
   const id = useId();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(-1);
+  const { t } = useT();
 
   const groups: Group[] = useMemo(() => {
-    if (query.trim()) return [{ label: "Places", places: searchPlaces(query, from) }];
+    if (query.trim()) return [{ label: t("search.places"), places: searchPlaces(query, from) }];
     const recent = recentPlaces();
     const key = keyPlaces(from).filter((p) => !recent.some((r) => r.id === p.id));
     return [
-      ...(recent.length ? [{ label: "Recent", places: recent }] : []),
-      { label: from ? "Nearby key places" : "Key places", places: key },
+      ...(recent.length ? [{ label: t("search.recent"), places: recent, recent: true }] : []),
+      { label: t(from ? "search.nearby" : "search.key"), places: key },
     ];
-  }, [query, from]);
+  }, [query, from, t]);
   const flat = groups.flatMap((g) => g.places);
   const listId = `${id}-list`;
   const optionId = (i: number) => `${id}-opt-${i}`;
@@ -66,7 +69,7 @@ export function PlaceSearch({
   return (
     <div className="place-search">
       <label htmlFor={`${id}-input`} className="visually-hidden">
-        Search for a place
+        {t("search.label")}
       </label>
       <div className="search-field">
         <Icon name="search" className="search-icon" />
@@ -78,7 +81,7 @@ export function PlaceSearch({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-          placeholder="Where to? Try “clinic” or “Perpustakaan”"
+          placeholder={t("search.placeholder")}
           value={query}
           autoComplete="off"
           enterKeyHint="search"
@@ -89,23 +92,23 @@ export function PlaceSearch({
           onKeyDown={onKey}
         />
         {query && (
-          <button type="button" className="icon-button search-clear" onClick={() => setQuery("")} aria-label="Clear search">
+          <button type="button" className="icon-button search-clear" onClick={() => setQuery("")} aria-label={t("search.clear")}>
             <Icon name="x" size={20} />
           </button>
         )}
       </div>
 
-      <div id={listId} role="listbox" aria-label="Suggestions" className="suggestions">
+      <div id={listId} role="listbox" aria-label={t("search.suggestions")} className="suggestions">
         {flat.length === 0 && (
           <p className="muted small-text no-results" role="status">
-            No campus places match “{query}”. Try the building name or what it is, e.g. “library”.
+            {t("search.none", { q: query })}
           </p>
         )}
         {groups.map((g) =>
           g.places.length ? (
             <div key={g.label} role="group" aria-label={g.label}>
               <p className="list-heading" aria-hidden="true">
-                {g.label === "Recent" && <Icon name="refresh" size={16} />} {g.label}
+                {g.recent && <Icon name="refresh" size={16} />} {g.label}
               </p>
               {g.places.map((p) => {
                 index += 1;
@@ -127,8 +130,8 @@ export function PlaceSearch({
                     <span className="dest-text">
                       <span className="dest-name">{p.name}</span>
                       <span className="dest-meta">
-                        {PLACE_TYPE_LABEL[p.type]}
-                        {d !== null && ` · ${d} m away`}
+                        {t(`place.${p.type}`)}
+                        {d !== null && ` · ${t("search.away", { d })}`}
                       </span>
                     </span>
                     <Icon name="chevronRight" className="dest-go" />
